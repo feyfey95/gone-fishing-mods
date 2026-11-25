@@ -36,6 +36,6 @@ local count=#randoms;assert(loadfile(dir.."/RemoteGambling.lua"))()({});assert(#
 output("incompatible native feature gate leaves gameplay unchanged PASS")
 local Session=require("MultiplayerSession");local Codec=require("MultiplayerProtocol")
 local disabled=Session.New("12345678",function()return 0 end,function(c)return c end,function()return true end)
-local packet=assert(Codec.Encode("12345678",1,{Speed=2,AirJump=true,MaxWin=true,Rerolls=5000,Hotspot=true}))
+local packet=assert(Codec.Encode("12345678",1,{Speed=3,AirJump=true,MaxWin=true,Rerolls=5000,Hotspot=true}))
 local state=assert(disabled:Receive("peer",packet));assert(not state.MaxWin and state.Rerolls==5 and not state.Hotspot)
 output("session max-win capability defaults OFF unless the public host explicitly enables it PASS")

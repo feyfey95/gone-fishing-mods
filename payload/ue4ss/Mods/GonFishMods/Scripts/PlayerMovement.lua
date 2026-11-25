@@ -8,7 +8,7 @@ return function(config)
 
         SpeedIndex = 1, SpeedMultiplier = 0,
 
-        SpeedSteps = config.SpeedSteps or {0, 2, 5, 10},
+        SpeedSteps = config.SpeedSteps or {0, 3, 5},
 
         JumpHeightMultiplier = tonumber(config.JumpHeightMultiplier) or 1,
 
@@ -24,9 +24,9 @@ return function(config)
 
     for i, value in ipairs(M.SpeedSteps) do
 
-        assert(type(value) == "number" and value == value and value >= 0 and value <= 10,
+        assert(type(value) == "number" and value == value and (value == 0 or value == 3 or value == 5),
 
-            "SpeedSteps values must be between 0 and 10")
+            "SpeedSteps values must be OFF (0), 3 or 5")
 
         if i > 1 then assert(value > 0, "Only the first speed step may be OFF") end
 
@@ -431,9 +431,9 @@ return function(config)
 
 
 
-    RegisterKeyBind(Key[config.SpeedHotkey or "ONE"], function() schedule_change("speed") end)
+    RegisterKeyBind(Key[config.SpeedHotkey or "SEVEN"], function() schedule_change("speed") end)
 
-    RegisterKeyBind(Key[config.AirJumpHotkey or config.DoubleJumpHotkey or "TWO"], function() schedule_change("air jump") end)
+    RegisterKeyBind(Key[config.AirJumpHotkey or config.DoubleJumpHotkey or "EIGHT"], function() schedule_change("air jump") end)
 
     M.LoopHandle = LoopInGameThreadWithDelay(tonumber(config.UpdateIntervalMs) or 100, function()
 
@@ -443,7 +443,7 @@ return function(config)
 
     end)
 
-    log("loaded v2; 1=speed OFF/2x/5x/10x; 2=unlimited air jump; height=" .. tostring(M.JumpHeightMultiplier) .. "x; both OFF at startup")
+    log("loaded v3; 7=speed OFF/3x/5x; 8=unlimited air jump; height=" .. tostring(M.JumpHeightMultiplier) .. "x; both OFF at startup")
 
     return M
 

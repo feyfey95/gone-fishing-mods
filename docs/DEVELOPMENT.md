@@ -2,7 +2,7 @@
 
 ## 保留與移除
 
-公開版保留 PlayerMovement、MultiplayerBridge、ForceEnablePerks、FasterBeerDrinking、CustomFishingCursor，新增 RemoteGambling 房主服務。main.lua 只載入這些白名單模組。移除 CrazierGambles、LuckierFishBite 的實作與相關測試，保留無功能同名檔供升級覆蓋。公開版不註冊 F1/F6/F7/F8/F9。
+公開版保留 PlayerMovement、MultiplayerBridge、ForceEnablePerks、FasterBeerDrinking，新增 RemoteGambling 房主服務。main.lua 只載入這些白名單模組。移除 CrazierGambles、LuckierFishBite 的實作與相關測試，保留無功能同名檔供升級覆蓋。公開版不註冊 F1/F6/F7/F8/F9。
 
 MultiplayerProtocol 保留舊線上格式供移動互通；Bridge 只送出跑速／跳躍及中性保留欄位。Session 只有在房主明確設定 AllowRemoteMaxWin=true 時保留遠端 MaxWin；Rerolls=5、Hotspot=false 仍強制中性值，不代做釣魚。Bridge.BetSettings 依 pool.Owner 鏈對應實際遠端權威 controller／Pawn，僅傳回該玩家的 session 狀態；本機房主、未知 Owner 與不支援的 session 都不套用。這不是遠端 DRM，也不會停用別人自行修改的本機程式。
 
@@ -21,3 +21,5 @@ Source/Native/ExtendedBPHooker.cpp 需 Windows SDK、PSAPI 及 Microsoft Detours
 RemoteGambling 透過既有、與指定 UE4SS 配對的 native prehook 在 ScaleFishCompeteServer 期間建立下注上下文，腳本回呼結束後清除；RandomFloatInRange 只在對應遠端玩家 MaxWin=true 的上下文內修改。沒有公開版本機最大獎或原本的基礎 RNG 偏移。設定預設啟用且 README／settings.lua 可見，沒有隱藏的帳號授權或遠端任意程式執行。
 
 已用模擬接收原本完整版的 GFMP1 封包與服務程式驗證。**pool.Owner 是否在真實遊戲指向下注者仍未證實**；已知函式還有 FishOwner 輸入，但本版沒有從未知 native stack offset 擷取參數。Owner 無法解析時維持正常 RNG，需真實多人日誌才能繼續確認。
+
+0.4：數字列7切換OFF/3/5，數字列8切換空中跳；設定、預設值、GameThread行為、codec允許值與混合版本測試一起更新。CustomFishingCursor 設定與載入項目移除，同名Lua保留無功能升級佔位檔；套件不再分發游標DLL／資源。

@@ -1,5 +1,5 @@
 {
-  "Version": "0.3-host-support-beta",
+  "Version": "0.4-controls-beta",
   "SteamAppId": 3645890,
   "ExpectedSteamBuild": "26855621",
   "UE4SSCommit": "682a75f103a61f4a5a8d396b9c2b43c8c1958c51",
@@ -26,11 +26,7 @@
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/settings.lua",
-      "SHA256": "54cac640fd94346af64b09b4c0d876789a5a639b1e3e6031037ae13fbe1c7da3"
-    },
-    {
-      "Path": "ue4ss/Mods/GonFishMods/Lib/CustomCursor.dll",
-      "SHA256": "096cd40078def0b3729cffdd0f488b2c0c4b9d153e4123c74d117d4c909353c0"
+      "SHA256": "464e9cc1011ceb1cb74bdb165d3f77d88d0c9e8ba634caa11ca8aba7073428dd"
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Lib/ExtendedBPHooker.dll",
@@ -42,7 +38,7 @@
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/CustomFishingCursor.lua",
-      "SHA256": "02544e0a4182de6200954febafd44e6a0c1e08e406c4b1275c20a4deeb20446c"
+      "SHA256": "a3d9a71e6fd318c3bbc4316266eb7b7e3ead5fcfcdc098a42cc13dba99d9177d"
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/FasterBeerDrinking.lua",
@@ -66,7 +62,7 @@
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/main.lua",
-      "SHA256": "5215812f24dd911e1fe87bfb9598bc53d5ac2786f8d769acedc87a8809a0d8a1"
+      "SHA256": "7c59dfd2d26e10a34532cf30ec133d6a3120e0ba55bf2e24c3f55efad7432969"
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/MultiplayerBridge.lua",
@@ -82,7 +78,7 @@
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/MultiplayerProtocol.lua",
-      "SHA256": "182c69ee6b90a0d20462e774f22a980a7785654cf5a50927ce08af6ce235699b"
+      "SHA256": "317f808219151746c355ccb9da6ad31dc9d8e601632c248c47c68013775dd667"
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/MultiplayerSession.lua",
@@ -90,23 +86,7 @@
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/PlayerMovement.lua",
-      "SHA256": "8b208cfbd65b4d7dd19f97e4081e0a2485c138eb2589aebc106881dad9286a6c"
-    },
-    {
-      "Path": "ue4ss/Mods/GonFishMods/Resources/CustomFishingCursor/cursor.cur",
-      "SHA256": "60032148ee95e0e6d697f2349f5ca865bd9781cfdf3ab7ff649bc3d2b3bcb09d"
-    },
-    {
-      "Path": "ue4ss/Mods/GonFishMods/Resources/CustomFishingCursor/cursor.pdn",
-      "SHA256": "5c161e4cdcd7e1b9cd76568d9af98a68f9778e0c3fa149029d275ee6adcfb2d3"
-    },
-    {
-      "Path": "ue4ss/Mods/GonFishMods/Resources/CustomFishingCursor/cursor.png",
-      "SHA256": "e4110ff8d64c744243c90b2adffdaa6ed1a4d767fdb0b362224edf27d7c0cf57"
-    },
-    {
-      "Path": "ue4ss/Mods/GonFishMods/Resources/CustomFishingCursor/cursor_orig.pdn",
-      "SHA256": "449edbe156eaeb056c9755d4fdcbe80e7228cb6a753446d2bc482b7e88cd73fa"
+      "SHA256": "8af4d0f8496f734085bdb4f60979b903ee0b9fdcffe4fae949523498ed47e124"
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/RemoteGambling.lua",

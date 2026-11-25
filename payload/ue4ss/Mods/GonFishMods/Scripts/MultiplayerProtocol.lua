@@ -1,6 +1,6 @@
 -- Pure codec. Never accepts Lua, function names, object paths, player IDs, or console commands.
 local Protocol = {Version=1, MaxLength=160}
-local speeds = {[0]=true,[2]=true,[5]=true,[10]=true}
+local speeds = {[0]=true,[3]=true,[5]=true}
 local fish = {[5]=true,[50]=true,[500]=true,[5000]=true}
 
 function Protocol.Encode(nonce, sequence, state)

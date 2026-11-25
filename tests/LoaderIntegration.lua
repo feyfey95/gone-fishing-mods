@@ -6,7 +6,7 @@ StaticFindObject=function()return {IsValid=function()return false end}end
 RegisterHook=function()end
 local loaded, keys, loops, cancelled = {}, {}, {}, {}
 print = function() end
-Key = {ONE=0x31,TWO=0x32,F1=0x70}
+Key = {ONE=0x31,TWO=0x32,SEVEN=0x37,EIGHT=0x38,F1=0x70}
 IsInGameThread = function() return true end
 ExecuteInGameThread = function(fn) fn() end
 RegisterKeyBind = function(key,fn) assert(not keys[key], "duplicate key"); keys[key]=fn end
@@ -35,12 +35,13 @@ assert(loadfile(main_source))()
 assert(loops[1].delay==500)
 assert(loops[1].fn()==true and cancelled[1])
 assert(loaded.PlayerMovement and not loaded.CrazierGambles)
-assert(not loaded.LuckierFishBite and loaded.ForceEnablePerks and loaded.FasterBeerDrinking and loaded.CustomFishingCursor)
-assert(keys[Key.ONE] and keys[Key.TWO] and not keys[Key.F1])
+assert(not loaded.LuckierFishBite and loaded.ForceEnablePerks and loaded.FasterBeerDrinking and not loaded.CustomFishingCursor)
+assert(keys[Key.SEVEN] and keys[Key.EIGHT] and not keys[Key.ONE] and not keys[Key.TWO] and not keys[Key.F1])
 assert(not GonFishModAPI.ModConfig.MultiplayerDiscovery.enabled)
 assert(GonFishModAPI.ModConfig.MultiplayerBridge.enabled)
 assert(GonFishModAPI.ModConfig.PlayerMovement.JumpHeightMultiplier==1)
-assert(table.concat(GonFishModAPI.ModConfig.PlayerMovement.SpeedSteps,",")=="0,2,5,10")
+assert(table.concat(GonFishModAPI.ModConfig.PlayerMovement.SpeedSteps,",")=="0,3,5")
 assert(loaded.MultiplayerBridge and loaded.RemoteGambling)
+assert(GonFishModAPI.ModConfig.CustomFishingCursor==nil)
 assert(GonFishModAPI.ModConfig.MultiplayerBridge.AllowRemoteMaxWin==true)
-host_print("public loader loads retained features, binds 1/2 and leaves F1 unbound PASS")
+host_print("public loader loads retained features, binds 7/8 and leaves F1 unbound PASS")

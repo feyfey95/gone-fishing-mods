@@ -24,6 +24,7 @@ def run(*arguments):
 run("-e", 'assert(_VERSION == "Lua 5.4", "Lua 5.4 required")')
 for path in sorted(payload.rglob("*.lua")):
     run("-e", "assert(loadfile(arg[1])); os.exit(0)", path)
+run(root / "tests/MovementControlsRegression.lua", src / "PlayerMovement.lua", "1")
 run(root / "tests/NetworkRegression.lua", src)
 run(root / "tests/PublicEditionRegression.lua", src)
 run(root / "tests/RemoteGamblingRegression.lua", src)

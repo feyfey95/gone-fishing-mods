@@ -1,6 +1,6 @@
 -- Explicit allowlist: old settings cannot re-enable modules removed from this edition.
 local supported = {
-    ForceEnablePerks=true, FasterBeerDrinking=true, CustomFishingCursor=true,
+    ForceEnablePerks=true, FasterBeerDrinking=true,
     PlayerMovement=true, MultiplayerBridge=true, RemoteGambling=true,
 }
 ExecuteInGameThread(function()
