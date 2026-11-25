@@ -3,13 +3,19 @@ local output=print;print=function()end
 IsInGameThread=function()return true end
 RegisterKeyBind=function()error("host service must not register any hotkey")end
 local function object(address)return {IsValid=function()return true end,GetAddress=function()return address end}end
-local fn=object(123);local pools={remote_on=object(1),remote_off=object(2),host=object(3),unknown=object(4)}
+local fn=object(123)
+fn.ForEachProperty=function(_,callback)
+    callback({GetFullName=function()return "ObjectProperty Dummy:FishOwner"end,GetOffset_Internal=function()return 16 end})
+end
+local pools={remote_on=object(1),remote_off=object(2),host=object(3),unknown=object(4)}
 local tasks,prehooks,posts,randoms={},{},{},{}
 StaticFindObject=function(name)return pools[name] or (name:match(":ScaleFishCompeteServer$") and fn or nil)end
 RegisterHook=function(path,callback)posts[#posts+1]=callback end
 GonFishModAPI={NativeFeatureCallbacksEnabled=true,
     AddTask=function(_,callback)tasks[#tasks+1]=callback end,
-    AddFunctionPrehook=function(name,addr,callback)prehooks[#prehooks+1]=callback;return true end,
+    AddFunctionObjectScope=function(name,addr,offset,pre,post)
+        assert(offset=="16");prehooks[#prehooks+1]=pre;posts[#posts+1]=post;return true
+    end,
     AddRandomFloatInRangePosthook=function(name,callback)randoms[#randoms+1]=callback;return true end}
 GonFishMultiplayer={IsHost=true,Ready=true,AllowRemoteMaxWin=true,BetSettings=function(pool)
     if pool==pools.remote_on then return {MaxWin=true}end

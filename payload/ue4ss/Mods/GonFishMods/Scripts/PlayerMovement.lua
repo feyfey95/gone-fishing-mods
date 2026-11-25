@@ -109,6 +109,16 @@ return function(config)
     -- Select only a local controller, never the first remote player found.
 
     function M.ResolvePlayer()
+        local controller=M.CachedController
+        if valid(controller)and M.CachedControllerAt==os.time()then
+            local ok,pawn,movement=pcall(function()
+                if not controller:IsLocalController()then return end
+                local pawn=controller.Pawn
+                if valid(pawn)and valid(pawn.CharacterMovement)then return pawn,pawn.CharacterMovement end
+            end)
+            if ok and pawn then return pawn,movement end
+        end
+        M.CachedController=nil
 
         for _, controller in ipairs(FindAllOf("PlayerController") or {}) do
 
@@ -126,7 +136,7 @@ return function(config)
 
                         local movement = pawn.CharacterMovement
 
-                        if valid(movement) then return pawn, movement end
+                        if valid(movement) then M.CachedController=controller;M.CachedControllerAt=os.time();return pawn, movement end
 
                     end
 
@@ -235,10 +245,15 @@ return function(config)
         end
 
         local record = M.Current
+        local bridge=GonFishMultiplayer
+        local network_client=bridge and bridge.IsHost~=true
+        local override=bridge and bridge.LocalMovementOverride()
+        local speed_active=network_client and override and override.Speed>0 or (not network_client and M.SpeedEnabled)
+        local jump_active=network_client and override and override.JumpZ>0 or (not network_client and M.AirJumpEnabled)
 
         checked("speed", function()
 
-            if M.SpeedEnabled then
+            if speed_active then
 
                 if record.SpeedOriginal == nil then
 
@@ -255,8 +270,6 @@ return function(config)
                 end
 
                 local target = record.SpeedOriginal * M.SpeedMultiplier
-                local bridge=GonFishMultiplayer
-                local override=bridge and bridge.LocalMovementOverride()
                 if override and override.Speed>0 then target=override.Speed end
 
                 if movement.MaxWalkSpeed ~= target then movement.MaxWalkSpeed = target end
@@ -285,7 +298,7 @@ return function(config)
 
         checked("air jump", function()
 
-            if M.AirJumpEnabled then
+            if jump_active then
 
                 if record.JumpOriginal == nil then
 
@@ -313,6 +326,7 @@ return function(config)
 
                 end
 
+                if network_client and override then record.JumpZTarget=override.JumpZ end
                 if pawn.JumpMaxCount ~= AIR_JUMP_LIMIT then pawn.JumpMaxCount = AIR_JUMP_LIMIT end
 
                 if math.abs(movement.JumpZVelocity - record.JumpZTarget) > 0.01 then
@@ -389,6 +403,8 @@ return function(config)
 
                 end
 
+                local bridge=GonFishMultiplayer
+                if bridge and bridge.NotifyStateChanged then bridge.NotifyStateChanged()end
                 M.Update()
 
                 local pending = not M.Current or M.Errors["resolve player"] or M.Errors["update"]

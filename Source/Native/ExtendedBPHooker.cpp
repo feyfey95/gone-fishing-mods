@@ -11,6 +11,7 @@
 #include <mutex>
 #include <vector>
 #include <unordered_map>
+#include <optional>
 
 #include <stdio.h>
 #include <stdint.h>
@@ -613,6 +614,41 @@ extern "C" {
     std::vector<lua_hook> lua_random_float_in_range_posthooks;
     std::vector<lua_hook> lua_random_integer_in_range_posthooks;
 
+    struct object_param_scope {
+        lua_State* L;
+        size_t offset;
+        int pre_ref;
+        int post_ref;
+    };
+    std::unordered_map<void*, object_param_scope> lua_object_param_scopes;
+    // Uses ProcessEvent's actual parameter blob. No guessed FFrame offsets or previous-bet cache.
+    void* read_object_parameter(const void* params, size_t offset) {
+        if (!params || offset > 128 || offset % sizeof(void*) != 0) return nullptr;
+        void* value = nullptr;
+        SIZE_T read = 0;
+        if (!ReadProcessMemory(GetCurrentProcess(), reinterpret_cast<const char*>(params)+offset,
+                               &value, sizeof(value), &read) || read != sizeof(value)) return nullptr;
+        return value;
+    }
+    void invoke_object_scope(const object_param_scope& scope, bool pre, void* object, void* params) {
+        std::lock_guard<std::recursive_mutex> guard(g_mutex);
+        lua_State* L = scope.L;
+        r_lua_rawgeti(L, LUA_REGISTRYINDEX, pre ? scope.pre_ref : scope.post_ref);
+        if (r_lua_type(L, -1) != 6) { r_lua_pop(L,1); return; }
+        if (pre) {
+            const std::string context_name = GetNameFromPointers(object);
+            void* owner = read_object_parameter(params, scope.offset);
+            const std::string owner_name = owner ? GetNameFromPointers(owner) : std::string{};
+            r_lua_pushstring(L, context_name.c_str());
+            r_lua_pushstring(L, owner_name.c_str());
+        }
+        if (r_lua_pcall(L, pre ? 2 : 0, 0, 0) != 0) {
+            printf("[ExtendedBPHooker] object scope callback error: %s\n",r_lua_tostring(L,-1));
+            r_lua_pop(L,1);
+        }
+    }
+
+
     void __fastcall hook_ukismet_math_library_exec_random_float_in_range(void *uobject, void *fframe, double *output) {
         if (!callbacks_allowed_here()) {
             return r_ukismet_math_library_exec_random_float_in_range(uobject, fframe, output);
@@ -877,7 +913,16 @@ extern "C" {
     }
 
     void __stdcall hook_uobject_process_event(void *_this, void *pFunction, void *pParms) {
-        return gfm_diagnostic::dispatch(callbacks_allowed_here(), g_mutex,
+        if (!callbacks_allowed_here()) return r_uobject_process_event(_this,pFunction,pParms);
+        std::optional<object_param_scope> scope;
+        {
+            std::lock_guard<std::recursive_mutex> guard(g_mutex);
+            const auto it=lua_object_param_scopes.find(pFunction);
+            if(it!=lua_object_param_scopes.end()) scope=it->second;
+        }
+        if(scope) invoke_object_scope(*scope,true,_this,pParms);
+        try {
+        gfm_diagnostic::dispatch(true, g_mutex,
             [&] {
                 auto it = lua_bp_prehooks.find(pFunction);
                 if (it != lua_bp_prehooks.end()) {
@@ -900,6 +945,11 @@ extern "C" {
                 }
             },
             [&] { return r_uobject_process_event(_this, pFunction, pParms); });
+        } catch(...) {
+            if(scope) invoke_object_scope(*scope,false,_this,pParms);
+            throw;
+        }
+        if(scope) invoke_object_scope(*scope,false,_this,pParms);
     }
 
     bool InitializeUnrealPointers() {
@@ -1097,4 +1147,25 @@ extern "C" {
         r_lua_pushboolean(L, 0);
         return 1;
     }
+    __declspec(dllexport) int add_function_object_scope(lua_State* L) {
+        std::lock_guard<std::recursive_mutex> guard(g_mutex);
+        if (!callbacks_allowed_here() || !r_luaL_checklstring || !r_lua_pushboolean ||
+            !r_luaL_checktype || !r_luaL_ref) return 0;
+        const char* label=r_luaL_checklstring(L,1,nullptr);
+        const char* address=r_luaL_checklstring(L,2,nullptr);
+        const char* offset_text=r_luaL_checklstring(L,3,nullptr);
+        uintptr_t fn=0;size_t offset=0;
+        try {fn=std::stoull(address,nullptr,16);offset=std::stoull(offset_text,nullptr,10);}
+        catch(...) {r_lua_pushboolean(L,0);return 1;}
+        if(!fn || offset>128 || offset%sizeof(void*) || lua_object_param_scopes.count(reinterpret_cast<void*>(fn))) {
+            r_lua_pushboolean(L,0);return 1;
+        }
+        r_luaL_checktype(L,4,6);r_luaL_checktype(L,5,6);
+        const int post_ref=r_luaL_ref(L,LUA_REGISTRYINDEX);
+        const int pre_ref=r_luaL_ref(L,LUA_REGISTRYINDEX);
+        lua_object_param_scopes.emplace(reinterpret_cast<void*>(fn),object_param_scope{L,offset,pre_ref,post_ref});
+        printf("[ExtendedBPHooker] parameter scope registered [%s], offset=%zu\n",label,offset);
+        r_lua_pushboolean(L,1);return 1;
+    }
+
 }

@@ -23,11 +23,14 @@ def run(*arguments):
     subprocess.run([args.lua, *map(str, arguments)], check=True, cwd=root)
 run("-e", 'assert(_VERSION == "Lua 5.4", "Lua 5.4 required")')
 for path in sorted(payload.rglob("*.lua")):
-    run("-e", "assert(loadfile(arg[1])); os.exit(0)", path)
+    run("-e", "assert(loadfile(arg[0])); os.exit(0)", path)
 run(root / "tests/MovementControlsRegression.lua", src / "PlayerMovement.lua", "1")
+run(root / "tests/MovementAckRegression.lua", src / "PlayerMovement.lua", "1")
+run(root / "tests/ChatControlFilterRegression.lua", src)
 run(root / "tests/NetworkRegression.lua", src)
 run(root / "tests/PublicEditionRegression.lua", src)
 run(root / "tests/RemoteGamblingRegression.lua", src)
+run(root / "tests/PerkSpeedRegression.lua", src / "ForceEnablePerks.lua")
 # The actual loader discovers settings.lua from the same directory as modules in this harness.
 with tempfile.TemporaryDirectory(prefix="gfm-loader-") as temp:
     import shutil

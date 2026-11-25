@@ -20,7 +20,14 @@ return function(config)
                 if P.Valid(perks) then
                     local ok,err=pcall(function()
                         perks.SetStickyHook(true,context.Pawn)
-                        perks.SetSprintSpeed(750,context.Pawn)
+                        local movement=PlayerMovement
+                        local local_boost=context.IsLocal and movement and
+                            (movement.SpeedEnabled or (movement.Current and movement.Current.SpeedOriginal~=nil))
+                        local bridge=GonFishMultiplayer
+                        local state=bridge and bridge.Session and bridge.Session:StateFor(context.Controller)
+                        if not local_boost and not(state and state.Speed>0)then
+                            perks.SetSprintSpeed(750,context.Pawn)
+                        end
                         perks.SetHasFishWhisperer(true,context.Pawn)
                     end)
                     if not ok and last_error~=tostring(err) then

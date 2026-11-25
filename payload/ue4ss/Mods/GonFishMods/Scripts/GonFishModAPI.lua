@@ -282,6 +282,13 @@ ExecuteInGameThreadWithDelay(2000, function()
             GonFishModAPI.AddRandomIntegerInRangePosthook = GonFishModAPI.KeepNativeCallbackThread(add_random_integer_in_range_posthook)
         end
     
+        local object_scope, scope_error=package.loadlib(dll_path,"add_function_object_scope")
+        if object_scope then
+            GonFishModAPI.AddFunctionObjectScope=GonFishModAPI.KeepNativeCallbackThread(object_scope)
+        else
+            print("[GFM-BET] object parameter scope unavailable: "..tostring(scope_error).."\n")
+        end
+
         local remove_function_prehook, err = package.loadlib(dll_path, "remove_function_prehook")
         if not remove_function_prehook then
             print("[GonFishModAPI] DLL Load Error: " .. tostring(err) .. "\n")

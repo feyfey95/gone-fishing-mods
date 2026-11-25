@@ -16,10 +16,16 @@ Source/Native/ExtendedBPHooker.cpp 需 Windows SDK、PSAPI 及 Microsoft Detours
 
 修改 payload 後必須更新 manifest.json 對應 SHA256。payload 在 Git 中保留原始位元組，避免 GitHub ZIP 的換行轉換讓安裝器驗證失敗。
 
-## 遠端賭博服務
+## 遠端賭博服務（0.5）
 
-RemoteGambling 透過既有、與指定 UE4SS 配對的 native prehook 在 ScaleFishCompeteServer 期間建立下注上下文，腳本回呼結束後清除；RandomFloatInRange 只在對應遠端玩家 MaxWin=true 的上下文內修改。沒有公開版本機最大獎或原本的基礎 RNG 偏移。設定預設啟用且 README／settings.lua 可見，沒有隱藏的帳號授權或遠端任意程式執行。
+使用 ProcessEvent 真正的參數 blob，在執行原函式前讀取當次 FishOwner；偏移由載入中的 UFunction.ForEachProperty／GetOffset_Internal 反射取得，限定ObjectProperty與8-byte對齊、0..128範圍。沒有猜測FFrame offset，也不使用上一筆下注的Owner。Native callback在GameThread與既有UE4SS profile guard之下執行，原函式期間不持有Lua callback鎖，完成／例外後皆清理scope。
 
-已用模擬接收原本完整版的 GFMP1 封包與服務程式驗證。**pool.Owner 是否在真實遊戲指向下注者仍未證實**；已知函式還有 FishOwner 輸入，但本版沒有從未知 native stack offset 擷取參數。Owner 無法解析時維持正常 RNG，需真實多人日誌才能繼續確認。
+RemoteGambling仍沒有本機熱鍵；房主明確設定允許時才接受相應玩家的最大獎狀態。無法解析當次玩家時保持正常RNG。最初三筆會記錄是否解析成功，供真實多人測試確認。這不是帳號專屬的授權機制，僅供全員同意的私人房間。
 
-0.4：數字列7切換OFF/3/5，數字列8切換空中跳；設定、預設值、GameThread行為、codec允許值與混合版本測試一起更新。CustomFishingCursor 設定與載入項目移除，同名Lua保留無功能升級佔位檔；套件不再分發游標DLL／資源。
+## 移動與聊天修正
+
+客戶端僅套用上次由房主ACK確認的絕對跑速與跳高，切換中不自行預測新倍率；逾時重握手並定期更新連線狀態。快取仍有效的controller，角色／world變更會重建，定時刷新避免殘留。Perks迴圈不在加速啟用期間重寫SprintSpeed；伺服器只在數值改變時寫入movement屬性。
+
+ChatControlFilter只識別固定GFMP協定封包，接受GFM Coop格式前綴與GetText，並對延後建立的文字作最多8次、64個widget的有限重試。不取消RPC、不移除一般聊天、不掃描全畫面。
+
+C++新增邊界測試見tests/native/ObjectScopeRegression.cpp，需與Detours相容的x64建置環境。Lua測試另涵蓋ACK等待／掉線重連、當次FishOwner優先、200個idle ticks的查找次數、延後UI與一般聊天。實際Steam連線與畫面FPS仍需人為測試；400→0的控制器掃描計數不能視為FPS數字。

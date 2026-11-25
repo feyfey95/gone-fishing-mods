@@ -6,7 +6,7 @@ return function(config)
     local M={Stack={},Registered={}}
     local target="/Game/PaulosCreations/DemonicAltar_HellGate_BloodPool/BloodPool/BluePrints/BP_BloodPool.BP_BloodPool_C:ScaleFishCompeteServer"
     local function log(message)print("[GFM-RemoteGambling] "..message.."\n")end
-    function M.Pre(object_name)
+    function M.Pre(object_name,fish_owner_name)
         P.AssertGameThread()
         local entry={Enabled=false}
         -- Always push a sentinel, so unmatched owners cannot inherit the previous bet.
@@ -15,8 +15,11 @@ return function(config)
         if not bridge or not bridge.IsHost or not bridge.AllowRemoteMaxWin or not bridge.Ready then return end
         local pool=type(object_name)=="string" and StaticFindObject(object_name) or nil
         if not P.Valid(pool)then return end
-        local settings=bridge.BetSettings(pool)
+        local owner=type(fish_owner_name)=="string" and fish_owner_name~="" and StaticFindObject(fish_owner_name)or fish_owner_name
+        local settings=bridge.BetSettings(pool,owner)
         entry.Enabled=settings~=nil and settings.MaxWin==true
+        M.BetsSeen=(M.BetsSeen or 0)+1
+        if M.BetsSeen<=3 then log("current FishOwner resolved="..tostring(settings~=nil).." maxwin="..tostring(entry.Enabled))end
     end
     function M.Post()
         P.AssertGameThread()
@@ -39,9 +42,7 @@ return function(config)
             if P.Valid(fn)then
                 local address=string.format("%X",fn:GetAddress())
                 if not M.Registered[address]then
-                    local installed=API.AddFunctionPrehook("ScaleFishCompeteServer",address,M.Pre)
-                    assert(installed~=false,"remote gambling native prehook rejected")
-                    RegisterHook(target,M.Post)
+                    require("GambleObjectScope").Register(API,fn,M.Pre,M.Post)
                     M.Registered[address]=true
                     log("host support active; local gambling controls unavailable")
                 end
@@ -49,7 +50,7 @@ return function(config)
         end
         API.AddTask(1500,M.Scan)
     end
-    if not API.NativeFeatureCallbacksEnabled or not API.AddFunctionPrehook or not API.AddRandomFloatInRangePosthook then
+    if not API.NativeFeatureCallbacksEnabled or not API.AddFunctionObjectScope or not API.AddRandomFloatInRangePosthook then
         log("host support unavailable: matching native API required")
         return M
     end

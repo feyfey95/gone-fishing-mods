@@ -27,7 +27,8 @@ function Driver:Apply(context,state)
             assert(finite(baseline) and baseline<=2000,"server speed baseline out of range")
             record.SpeedBase=baseline
         end
-        movement.MaxWalkSpeed=record.SpeedBase*state.Speed
+        local target=record.SpeedBase*state.Speed
+        if movement.MaxWalkSpeed~=target then movement.MaxWalkSpeed=target end
     elseif record.SpeedBase then
         movement.MaxWalkSpeed=record.SpeedBase;record.SpeedBase=nil
     end
@@ -39,8 +40,8 @@ function Driver:Apply(context,state)
             assert(finite(velocity) and velocity<=5000,"jump velocity unavailable")
             record.JumpBase=count;record.JumpZBase=velocity
         end
-        context.Pawn.JumpMaxCount=2147483647
-        movement.JumpZVelocity=record.JumpZBase -- original 1x height, no gravity change
+        if context.Pawn.JumpMaxCount~=2147483647 then context.Pawn.JumpMaxCount=2147483647 end
+        if movement.JumpZVelocity~=record.JumpZBase then movement.JumpZVelocity=record.JumpZBase end -- original 1x height
     else
         if record.JumpBase then context.Pawn.JumpMaxCount=record.JumpBase;record.JumpBase=nil end
         if record.JumpZBase then movement.JumpZVelocity=record.JumpZBase;record.JumpZBase=nil end

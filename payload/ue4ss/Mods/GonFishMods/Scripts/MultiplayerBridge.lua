@@ -8,6 +8,7 @@ return function(config)
     GonFishMultiplayer=M
     local CHAT="/Game/MultiplayerChat/Main/MultiplayerChat_C.MultiplayerChat_C_C:"
     local color={R=0.3,G=0.8,B=0.5,A=1.0}
+    local ChatFilter=require("ChatControlFilter").New(P,Codec)
     local generation=0
     local function log(text)print("[GFM-MP] "..text.."\n")end
     local function hash(text)
@@ -26,15 +27,28 @@ return function(config)
         return ok and s or nil
     end
     local function contexts()
-        local all=P.Contexts()
-        local result={}
-        for _,ctx in ipairs(all)do
-            if type(ctx.PlayerId)=="number" and ctx.PlayerId>=0 then
-                ctx.Key=ctx.Key..":"..tostring(ctx.PlayerId)
-                result[#result+1]=ctx
+        local now=os.time()
+        local cached=M.ContextsCache
+        local refresh=not cached or now~=(M.ContextsAt or 0)
+        if not refresh then
+            for _,ctx in ipairs(cached)do
+                if not P.Valid(ctx.Controller)or not P.Same(ctx.Pawn,P.Read(ctx.Controller,"Pawn"))then refresh=true;break end
             end
         end
+        if not refresh then return cached end
+        local result={}
+        for _,ctx in ipairs(P.Contexts())do
+            if type(ctx.PlayerId)=="number" and ctx.PlayerId>=0 then
+                ctx.Key=ctx.Key..":"..tostring(ctx.PlayerId);result[#result+1]=ctx
+            end
+        end
+        M.ContextsCache=result;M.ContextsAt=now
         return result
+    end
+    local function local_context()
+        for _,ctx in ipairs(contexts())do
+            if ctx.IsLocal and P.Valid(P.Read(ctx.Pawn,"CharacterMovement"))then return ctx end
+        end
     end
     local function for_chat(component)
         for _,ctx in ipairs(contexts())do
@@ -66,7 +80,7 @@ return function(config)
     local function new_session(ctx,key)
         M.Driver:Reset();M.Sequence=0;M.Pending={};M.LastState=nil;M.Ack=nil;M.Attempts=0;M.Ready=false
         M.LastHello=nil;M.LastPacket=nil;M.Replies={};M.Hellos={}
-        M.ContextKey=key;M.IsHost=ctx.IsAuthority;generation=generation+1
+        M.ContextKey=key;M.IsHost=ctx.IsAuthority;M.LastAckAt=nil;M.HadAck=false;generation=generation+1
         if M.IsHost then
             M.Nonce=hash(key..":"..os.time()..":"..generation)
             M.Session=Session.New(M.Nonce,os.time,function(c)
@@ -133,6 +147,7 @@ return function(config)
         local pending=M.Pending[seq]
         if not pending or pending~=fingerprint(local_state())then return false end
         M.Ack={Speed=speed,JumpZ=jump,Signature=movement_signature(local_state())}
+        M.LastAckAt=os.time()
         M.LastPacket=nil
         if not M.HadAck then
             M.HadAck=true
@@ -145,38 +160,55 @@ return function(config)
         return true
     end
     function M.LocalMovementOverride()
-        if M.IsHost or not M.Ack or M.Ack.Signature~=movement_signature(local_state())then return nil end
-        return M.Ack
+        if M.IsHost then return nil end
+        -- Keep the previous confirmed mode during a transition, rather than predicting a new speed.
+        return M.Ack or {Speed=0,JumpZ=0,Pending=true}
     end
-    -- Host support for a full client's own bet. Public local controls stay neutral.
-    function M.BetSettings(pool)
+    function M.BetSettings(pool,fish_owner)
         P.AssertGameThread()
-        if not M.IsHost or not M.AllowRemoteMaxWin or not M.Session then return nil end
-        local owner=P.Read(pool,"Owner")
-        for _=1,4 do
-            if not P.Valid(owner)then break end
-            for _,ctx in ipairs(contexts())do
-                if ctx.IsAuthority and not ctx.IsLocal and
-                    (P.Same(ctx.Controller,owner)or P.Same(ctx.Pawn,owner))then
-                    return M.Session:StateFor(ctx.Controller)
+        if not M.IsHost or not M.Session then return nil end
+        local queue={};local seen={}
+        local first=P.Valid(fish_owner)and fish_owner or P.Read(pool,"Owner")
+        if P.Valid(first)then queue[1]=first end
+        local index=1
+        while queue[index]and index<=16 do
+            local owner=queue[index];index=index+1
+            local id=P.Id(owner)
+            if id and not seen[id]then
+                seen[id]=true
+                for _,ctx in ipairs(contexts())do
+                    if ctx.IsAuthority and (P.Same(ctx.Controller,owner)or P.Same(ctx.Pawn,owner)
+                        or P.Same(P.Read(ctx.Controller,"PlayerState"),owner))then
+                        if ctx.IsLocal then return false and local_state()or nil end
+                        if M.AllowRemoteMaxWin then return M.Session:StateFor(ctx.Controller)end
+                        return nil
+                    end
+                end
+                for _,field in ipairs({"Owner","PlayerCharacter","PlayerController","Controller"})do
+                    local next_owner=P.Read(owner,field)
+                    if P.Valid(next_owner)and #queue<16 then queue[#queue+1]=next_owner end
                 end
             end
-            owner=P.Read(owner,"Owner")
+        end
+        -- Legacy standalone calls may not supply an owner. Never use this fallback for a remote RPC.
+        if false and not P.Valid(fish_owner)then
+            local all=contexts()
+            if #all==1 and all[1].IsLocal and all[1].IsAuthority then return local_state()end
         end
         if not M.OwnerWarning then
-            M.OwnerWarning=true;log("remote bet owner unresolved: leaving RNG unchanged")
+            M.OwnerWarning=true;log("bet owner unresolved from current FishOwner; RNG unchanged")
         end
         return nil
     end
     function M.Tick()
         P.AssertGameThread()
-        local ctx=P.LocalContext()
+        ChatFilter:Tick()
+        local ctx=local_context()
         if not ctx then
             if M.ContextKey then M.Driver:Reset()end
             M.ContextKey=nil;M.Ready=false;M.Session=nil;M.Ack=nil;return
         end
         if type(ctx.PlayerId)~="number" or ctx.PlayerId<0 then return end
-        ctx.Key=ctx.Key..":"..tostring(ctx.PlayerId)
         local world=P.Id(ctx.Pawn:GetWorld())or "world"
         M.WorldId=world
         local key=ctx.Key..":"..world..(ctx.IsAuthority and "" or (":"..tostring(P.Id(ctx.Pawn))))
@@ -201,14 +233,23 @@ return function(config)
             for key in pairs(M.Replies)do if not present[key]then M.Replies[key]=nil;M.Hellos[key]=nil end end
             return
         end
+        local now=os.time()
+        if M.Ready and ((M.LastPacket and (M.Retries or 0)>=3 and now-(M.LastSent or now)>=2)
+            or (M.LastAckAt and now-M.LastAckAt>=12))then
+            M.Ready=false;M.Ack=nil;M.Pending={};M.LastState=nil;M.LastPacket=nil;M.LastAckAt=nil;M.HadAck=false;M.Nonce=nil
+            M.Attempts=0;M.LastHello=nil;generation=generation+1
+            M.Challenge=hash(key..":recover:"..generation..":"..now)
+            log("host confirmation timed out; waiting for fresh synchronization")
+        end
         if not M.Ready then
             local now=os.time()
+            if M.Attempts>=10 and M.LastHello and now-M.LastHello>=10 then M.Attempts=0 end
             if M.Attempts<10 and (not M.LastHello or now-M.LastHello>=2)then
                 M.LastHello=now;M.Attempts=M.Attempts+1;send_server(ctx,"GFMPQ1|"..M.Challenge)
             end
             return
         end
-        if signature~=M.LastState then
+        if signature~=M.LastState or (not M.LastPacket and M.LastAckAt and now-M.LastAckAt>=5)then
             M.Sequence=M.Sequence+1
             local packet=assert(Codec.Encode(M.Nonce,M.Sequence,state))
             M.Pending[M.Sequence]=signature
@@ -234,23 +275,18 @@ return function(config)
     end
     RegisterHook(CHAT.."SR_Send Message",hook(M.ReceiveServer))
     RegisterHook(CHAT.."MC_Enter Text",hook(M.ReceiveClient))
-    -- Keep wire-format messages out of the gameplay chat UI; ordinary chat is untouched.
-    RegisterHook("/Game/MultiplayerChat/ChatWidgets/Message.Message_C:ExecuteUbergraph_Message",function(self)
+    local function observe_message(self)
         local widget=value(self)
-        local function hide_control_frame()
-            local block=P.Read(widget,"MessageText")
-            if not P.Valid(block)then return end
-            local body=P.Read(block,"Text")
-            local ok,content=pcall(function()return body:ToString()end)
-            if not ok or type(content)~="string" or #content>160 then return end
-            local control=Codec.Decode(content)~=nil or content:match("^GFMPQ1|%x%x%x%x%x%x%x%x$")
-                or content:match("^GFMPH1|%x%x%x%x%x%x%x%x|%x%x%x%x%x%x%x%x$")
-                or content:match("^GFMPA1|%x%x%x%x%x%x%x%x|%d+|%d+%.%d%d%d|%d+%.%d%d%d$")
-            if control then widget:SetVisibility(1)end -- ESlateVisibility::Collapsed
-        end
-        if IsInGameThread and IsInGameThread()then pcall(hide_control_frame)
-        else ExecuteInGameThread(function()pcall(hide_control_frame)end)end
-    end)
+        local function run()ChatFilter:Observe(widget)end
+        if IsInGameThread and IsInGameThread()then run()else ExecuteInGameThread(run)end
+    end
+    for _,name in ipairs({"ExecuteUbergraph_Message","ShowMessage","Message"})do
+        pcall(RegisterHook,"/Game/MultiplayerChat/ChatWidgets/Message.Message_C:"..name,observe_message)
+    end
+    function M.NotifyStateChanged()
+        local ok,err=pcall(M.Tick)
+        if not ok and M.LastError~=tostring(err)then M.LastError=tostring(err);log("state change: "..M.LastError)end
+    end
     LoopInGameThreadWithDelay(250,function()
         local ok,err=pcall(M.Tick)
         if not ok and M.LastError~=tostring(err)then M.LastError=tostring(err);log("tick: "..M.LastError)end

@@ -17,7 +17,7 @@ GonFishModAPI = {
     PinNativeCallbackThread=function() end,
     LoadConfig=function() GonFishModAPI.ModConfig=assert(loadfile(feature_dir.."/settings.lua"))() end,
     AddTask=function() end, AddRandomFloatInRangePosthook=function() return true end,
-    AddFunctionPrehook=function() return true end,
+    AddFunctionPrehook=function() return true end, AddFunctionObjectScope=function() return true end,
 }
 package.preload.GonFishModAPI = function() return GonFishModAPI end
 for _,name in ipairs({"PlayerMovement","MultiplayerBridge","RemoteGambling","ForceEnablePerks","FasterBeerDrinking"}) do

@@ -17,7 +17,7 @@ local function install_globals(node)
     PlayerMovement=node and node.move;CrazeirGambles=node and node.gamble;LuckierFishBite=node and node.fish
     GonFishMultiplayer=node and node.bridge
     IsInGameThread=function()return active~=nil end
-    FindAllOf=function(name)return name=="PlayerController" and active.controllers or {}end
+    FindAllOf=function(name)active.scan_count=(active.scan_count or 0)+1;return name=="PlayerController" and active.controllers or {}end
     RegisterHook=function(name,fn)active.hooks[name]=fn end
     LoopInGameThreadWithDelay=function(_,fn)active.loop=fn;return 1 end
     ExecuteInGameThread=function(fn)fn()end
@@ -120,6 +120,8 @@ within(server,function()
     local state=server.bridge.Session:StateFor(server.players[2].controller)
     assert(state.MaxWin and state.Rerolls==5 and not state.Hotspot)
     assert(server.bridge.BetSettings(pool2).MaxWin)
+    assert(not server.bridge.BetSettings(pool2,server.players[3].pawn).MaxWin)
+    assert(server.bridge.BetSettings(pool2,unknown)==nil)
     assert(not server.bridge.BetSettings(pool3).MaxWin)
     assert(server.bridge.BetSettings(host_pool)==nil and server.bridge.BetSettings(unknown)==nil)
     server.bridge.AllowRemoteMaxWin=false
@@ -139,7 +141,15 @@ tick(clients[3]);tick(clients[3]);tick(server)
 assert(old_server.md.MaxWalkSpeed==350 and new_server.md.MaxWalkSpeed==2000)
 within(clients[3],function()assert(clients[3].bridge.LocalMovementOverride().Speed==2000)end)
 host_print("respawn resets peer sequence safely and records fresh per-pawn baseline PASS")
-table.remove(server.controllers,2);tick(server)
+local old_nonce=clients[3].bridge.Nonce
+server.bridge.ContextKey=nil;clock=clock+5;tick(server)
+for i=1,8 do clock=clock+2;tick(clients[3]);tick(server)end
+tick(clients[3])
+assert(clients[3].bridge.Ready and clients[3].bridge.Nonce==server.bridge.Nonce)
+assert(clients[3].bridge.Nonce~=old_nonce)
+within(clients[3],function()assert(clients[3].bridge.LocalMovementOverride().Speed==2000)end)
+host_print("server restart/stale session re-handshakes and restores confirmed settings PASS")
+server.players[2].cd.valid=false;table.remove(server.controllers,2);tick(server)
 within(server,function()assert(not server.bridge.ReceiveServer(server.players[2].chat,"GFMPQ1|12345678"))end)
 host_print("disconnected controller/component no longer authorized PASS")
 within(clients[3],function()
@@ -151,5 +161,10 @@ within(clients[3],function()
     bd.Text=FText("hello friends");filter(parameter(widget));assert(collapsed==1)
 end)
 host_print("control-frame UI filtering leaves normal chat untouched PASS")
+local scans=0;for _,n in ipairs({server,clients[3]})do scans=scans+(n.scan_count or 0)end
+for i=1,100 do tick(server);tick(clients[3])end
+local after=0;for _,n in ipairs({server,clients[3]})do after=after+(n.scan_count or 0)end
+assert(after-scans<=2,"idle bridge ticks repeatedly scan the controller array")
+host_print("200 idle ticks use cached valid controllers PASS")
 os.time=original_time
 host_print("NOTE: simulated bus exercises real bridge/driver code, not Steam networking or game physics")
