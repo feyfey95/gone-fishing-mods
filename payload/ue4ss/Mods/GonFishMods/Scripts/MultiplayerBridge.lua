@@ -4,7 +4,7 @@ return function(config)
     local Codec=require("MultiplayerProtocol")
     local Session=require("MultiplayerSession")
     local Driver=require("MultiplayerMovement")
-    local M={Driver=Driver.New(),Sequence=0,Pending={},Ready=false,LastState=nil,Nonce=nil,Attempts=0,Replies={},Hellos={}}
+    local M={AllowRemoteMaxWin=config.AllowRemoteMaxWin==true,Driver=Driver.New(),Sequence=0,Pending={},Ready=false,LastState=nil,Nonce=nil,Attempts=0,Replies={},Hellos={}}
     GonFishMultiplayer=M
     local CHAT="/Game/MultiplayerChat/Main/MultiplayerChat_C.MultiplayerChat_C_C:"
     local color={R=0.3,G=0.8,B=0.5,A=1.0}
@@ -74,7 +74,7 @@ return function(config)
             end,function(c)
                 for _,v in ipairs(contexts())do if P.Same(v.Controller,c)then return v.IsAuthority end end
                 return false
-            end)
+            end,{RemoteMaxWin=M.AllowRemoteMaxWin})
             M.Ready=true;log("host session ready; per-player controls")
         else
             M.Nonce=nil;M.Session=nil;M.Challenge=hash(key..":"..os.time()..":"..generation)
@@ -147,6 +147,26 @@ return function(config)
     function M.LocalMovementOverride()
         if M.IsHost or not M.Ack or M.Ack.Signature~=movement_signature(local_state())then return nil end
         return M.Ack
+    end
+    -- Host support for a full client's own bet. Public local controls stay neutral.
+    function M.BetSettings(pool)
+        P.AssertGameThread()
+        if not M.IsHost or not M.AllowRemoteMaxWin or not M.Session then return nil end
+        local owner=P.Read(pool,"Owner")
+        for _=1,4 do
+            if not P.Valid(owner)then break end
+            for _,ctx in ipairs(contexts())do
+                if ctx.IsAuthority and not ctx.IsLocal and
+                    (P.Same(ctx.Controller,owner)or P.Same(ctx.Pawn,owner))then
+                    return M.Session:StateFor(ctx.Controller)
+                end
+            end
+            owner=P.Read(owner,"Owner")
+        end
+        if not M.OwnerWarning then
+            M.OwnerWarning=true;log("remote bet owner unresolved: leaving RNG unchanged")
+        end
+        return nil
     end
     function M.Tick()
         P.AssertGameThread()

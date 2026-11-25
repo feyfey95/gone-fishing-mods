@@ -1,5 +1,5 @@
 {
-  "Version": "0.2-public-beta",
+  "Version": "0.3-host-support-beta",
   "SteamAppId": 3645890,
   "ExpectedSteamBuild": "26855621",
   "UE4SSCommit": "682a75f103a61f4a5a8d396b9c2b43c8c1958c51",
@@ -26,7 +26,7 @@
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/settings.lua",
-      "SHA256": "3a6825e279123a5ab946cf6f4a79797638b33f085e8d1c6a8683b6106ec6f4ab"
+      "SHA256": "54cac640fd94346af64b09b4c0d876789a5a639b1e3e6031037ae13fbe1c7da3"
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Lib/CustomCursor.dll",
@@ -66,11 +66,11 @@
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/main.lua",
-      "SHA256": "417870a00c44f342f772b46cb56de252f77d8bcb6188d28482f6e0a0ba7444ef"
+      "SHA256": "5215812f24dd911e1fe87bfb9598bc53d5ac2786f8d769acedc87a8809a0d8a1"
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/MultiplayerBridge.lua",
-      "SHA256": "7e3362160f8fd49cb3c3b5bf24da38c62ba106dbc71b1da3d5cb59d95def8597"
+      "SHA256": "f9ab09c910ddb353b21b83465ded3256cae21a0c54d7a94ae342015a99507f00"
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/MultiplayerDiscovery.lua",
@@ -86,7 +86,7 @@
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/MultiplayerSession.lua",
-      "SHA256": "316a8445330796b9db800f86947a0ca409a514e025a5a24580ab71243aae9048"
+      "SHA256": "66068562a2bdc3948890dbfd609a0785960732f25f87e9d0a0d710bbaf09a188"
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/PlayerMovement.lua",
@@ -107,7 +107,11 @@
     {
       "Path": "ue4ss/Mods/GonFishMods/Resources/CustomFishingCursor/cursor_orig.pdn",
       "SHA256": "449edbe156eaeb056c9755d4fdcbe80e7228cb6a753446d2bc482b7e88cd73fa"
+    },
+    {
+      "Path": "ue4ss/Mods/GonFishMods/Scripts/RemoteGambling.lua",
+      "SHA256": "5c8995a0e77129cc2ca4852f1ca247a5c8b8e8b98010b381bda4bae02545b191"
     }
   ],
-  "Edition": "public-movement"
+  "Edition": "public-client-with-remote-host-support"
 }

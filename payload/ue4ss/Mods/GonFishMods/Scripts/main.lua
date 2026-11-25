@@ -1,7 +1,7 @@
 -- Explicit allowlist: old settings cannot re-enable modules removed from this edition.
 local supported = {
     ForceEnablePerks=true, FasterBeerDrinking=true, CustomFishingCursor=true,
-    PlayerMovement=true, MultiplayerBridge=true,
+    PlayerMovement=true, MultiplayerBridge=true, RemoteGambling=true,
 }
 ExecuteInGameThread(function()
     print("[GonFishMods] public edition initialization ...\n")
@@ -14,7 +14,7 @@ ExecuteInGameThread(function()
                 GonFishModAPI.LoadConfig()
                 for name, config in pairs(GonFishModAPI.ModConfig) do
                     if type(config)=="table" and config.enabled then
-                        if supported[name] then
+                        if supported[name] and (name~="RemoteGambling" or GonFishModAPI.NativeFeatureCallbacksEnabled) then
                             print("[GonFishMods] loading mod :: "..name.."\n")
                             require(name)(config)
                         else

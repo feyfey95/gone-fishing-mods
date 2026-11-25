@@ -3,9 +3,9 @@ local Protocol = require("MultiplayerProtocol")
 local Session = {}
 Session.__index = Session
 
-function Session.New(nonce, clock, key_for_controller, authority_check)
+function Session.New(nonce, clock, key_for_controller, authority_check, capabilities)
     assert(Protocol.Encode(nonce,1,{Speed=0,AirJump=false,MaxWin=false,Rerolls=5,Hotspot=false}))
-    return setmetatable({Nonce=nonce:lower(),Clock=clock,KeyFor=key_for_controller,Authority=authority_check,Peers={}},Session)
+    return setmetatable({Nonce=nonce:lower(),Clock=clock,KeyFor=key_for_controller,Authority=authority_check,Capabilities=capabilities or {},Peers={}},Session)
 end
 
 function Session:Receive(owning_controller, message)
@@ -20,8 +20,8 @@ function Session:Receive(owning_controller, message)
     local second=math.floor(self.Clock())
     local count=peer and peer.Second==second and peer.Count or 0
     if count>=8 then return nil,"rate limit" end
-    -- Public hosts support movement only. Never retain legacy gameplay requests.
-    decoded.State.MaxWin=false
+    -- Only explicitly enabled host support can accept remote max-win requests.
+    decoded.State.MaxWin=self.Capabilities.RemoteMaxWin==true and decoded.State.MaxWin
     decoded.State.Rerolls=5
     decoded.State.Hotspot=false
     self.Peers[key]={Controller=owning_controller,Sequence=decoded.Sequence,State=decoded.State,Second=second,Count=count+1}

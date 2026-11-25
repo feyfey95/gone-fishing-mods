@@ -26,6 +26,7 @@ for path in sorted(payload.rglob("*.lua")):
     run("-e", "assert(loadfile(arg[1])); os.exit(0)", path)
 run(root / "tests/NetworkRegression.lua", src)
 run(root / "tests/PublicEditionRegression.lua", src)
+run(root / "tests/RemoteGamblingRegression.lua", src)
 # The actual loader discovers settings.lua from the same directory as modules in this harness.
 with tempfile.TemporaryDirectory(prefix="gfm-loader-") as temp:
     import shutil

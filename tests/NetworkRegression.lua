@@ -73,7 +73,8 @@ server=node(true,1);add(server,1,true);add(server,2,false);add(server,3,false,35
 clients[2]=node(false,2);add(clients[2],2,true)
 clients[3]=node(false,3);add(clients[3],3,true,350)
 for _,n in ipairs({server,clients[2],clients[3]})do
-    n.bridge=within(n,function()return assert(loadfile(dir.."/MultiplayerBridge.lua"))()({})end)
+    local client_dir=(not n.host and arg[2]) or dir
+    n.bridge=within(n,function()return assert(loadfile(client_dir.."/MultiplayerBridge.lua"))()({AllowRemoteMaxWin=n.host})end)
 end
 local function tick(n)within(n,n.bridge.Tick)end
 tick(server);tick(clients[2]);tick(clients[3])
@@ -86,6 +87,9 @@ assert(server.players[2].md.MaxWalkSpeed==1500 and server.players[2].pd.JumpMaxC
 assert(server.players[3].md.MaxWalkSpeed==700 and server.players[3].pd.JumpMaxCount==1)
 assert(server.players[1].md.MaxWalkSpeed==300 and server.players[1].pd.JumpMaxCount==1)
 within(clients[2],function()assert(clients[2].bridge.LocalMovementOverride().Speed==1500)end)
+if not arg[2] then
+    within(server,function()assert(not server.bridge.Session:StateFor(server.players[2].controller).MaxWin)end)
+end
 host_print("independent 5x+air / 2x player states mirror only correct server pawns PASS")
 local Codec=require("MultiplayerProtocol")
 within(server,function()
@@ -103,13 +107,23 @@ clients[2].move.SpeedEnabled=false;clients[2].move.SpeedMultiplier=0;clients[2].
 assert(server.players[2].md.MaxWalkSpeed==300 and server.players[2].pd.JumpMaxCount==1 and server.players[2].md.JumpZVelocity==420)
 assert(server.players[3].md.MaxWalkSpeed==3500)
 within(server,function()
-    assert(server.bridge.BetSettings==nil)
+    local pool2=obj(server,{Owner=server.players[2].controller})
+    local pool3=obj(server,{Owner=server.players[3].controller})
+    local host_pool=obj(server,{Owner=server.players[1].controller})
+    local unknown=obj(server,{})
+    -- Reproduce the unchanged full client's actual GFMP1 packet.
     local packet=assert(Codec.Encode(server.bridge.Nonce,100,{Speed=0,AirJump=false,MaxWin=true,Rerolls=5000,Hotspot=true}))
     assert(server.bridge.ReceiveServer(server.players[2].chat,packet))
     local state=server.bridge.Session:StateFor(server.players[2].controller)
-    assert(state.MaxWin==false and state.Rerolls==5 and state.Hotspot==false)
+    assert(state.MaxWin and state.Rerolls==5 and not state.Hotspot)
+    assert(server.bridge.BetSettings(pool2).MaxWin)
+    assert(not server.bridge.BetSettings(pool3).MaxWin)
+    assert(server.bridge.BetSettings(host_pool)==nil and server.bridge.BetSettings(unknown)==nil)
+    server.bridge.AllowRemoteMaxWin=false
+    assert(server.bridge.BetSettings(pool2)==nil)
+    server.bridge.AllowRemoteMaxWin=true
 end)
-host_print("OFF restores only own movement; public host strips legacy gambling/fishing requests PASS")
+host_print("full-client packet enables only the matching remote bet; public host/other players and unknown owners stay normal PASS")
 local old_server=server.players[3]
 local new_server=player(server,3,false,400);server.players[3]=new_server;server.controllers[3]=new_server.controller
 -- In-game respawn may retain the controller; reproduce that path exactly.

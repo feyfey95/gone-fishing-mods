@@ -6,6 +6,7 @@ return {
         enabled=true, SpeedSteps={0,2,5,10}, JumpHeightMultiplier=1,
         SpeedHotkey="ONE", AirJumpHotkey="TWO", UpdateIntervalMs=100,
     },
-    MultiplayerBridge = {enabled=true},
+    MultiplayerBridge = {enabled=true, AllowRemoteMaxWin=true},
+    RemoteGambling = {enabled=true},
     MultiplayerDiscovery = {enabled=false},
 }

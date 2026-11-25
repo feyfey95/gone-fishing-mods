@@ -20,7 +20,7 @@ GonFishModAPI = {
     AddFunctionPrehook=function() return true end,
 }
 package.preload.GonFishModAPI = function() return GonFishModAPI end
-for _,name in ipairs({"PlayerMovement","MultiplayerBridge","ForceEnablePerks","FasterBeerDrinking"}) do
+for _,name in ipairs({"PlayerMovement","MultiplayerBridge","RemoteGambling","ForceEnablePerks","FasterBeerDrinking"}) do
     local module_name=name
     package.preload[module_name]=function()
         loaded[module_name]=true
@@ -41,5 +41,6 @@ assert(not GonFishModAPI.ModConfig.MultiplayerDiscovery.enabled)
 assert(GonFishModAPI.ModConfig.MultiplayerBridge.enabled)
 assert(GonFishModAPI.ModConfig.PlayerMovement.JumpHeightMultiplier==1)
 assert(table.concat(GonFishModAPI.ModConfig.PlayerMovement.SpeedSteps,",")=="0,2,5,10")
-assert(loaded.MultiplayerBridge)
+assert(loaded.MultiplayerBridge and loaded.RemoteGambling)
+assert(GonFishModAPI.ModConfig.MultiplayerBridge.AllowRemoteMaxWin==true)
 host_print("public loader loads retained features, binds 1/2 and leaves F1 unbound PASS")
