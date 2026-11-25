@@ -46,11 +46,9 @@ return function(config)
     end
     local function local_state()
         local move=PlayerMovement or {}
-        local gamble=CrazeirGambles or {}
-        local fishing=LuckierFishBite or {}
+        -- Legacy wire fields remain neutral for movement-only compatibility.
         return {Speed=move.SpeedEnabled and move.SpeedMultiplier or 0,
-            AirJump=move.AirJumpEnabled==true,MaxWin=gamble.do_max_win==true,
-            Rerolls=(fishing.LuckMult or 1)*(fishing.LuckFactor or 5),Hotspot=fishing.ForceEnableHotsport==true}
+            AirJump=move.AirJumpEnabled==true,MaxWin=false,Rerolls=5,Hotspot=false}
     end
     local function fingerprint(state)return assert(Codec.Encode("00000000",1,state))end
     local function movement_signature(state)return tostring(state.Speed)..":"..tostring(state.AirJump)end
@@ -117,7 +115,7 @@ return function(config)
                 ack(ctx,seq,targets)
             end
         end
-        log("accepted player="..tostring(ctx.PlayerId).." speed="..state.Speed.." air="..tostring(state.AirJump).." maxwin="..tostring(state.MaxWin))
+        log("accepted player="..tostring(ctx.PlayerId).." speed="..state.Speed.." air="..tostring(state.AirJump))
         return true
     end
     function M.ReceiveClient(component,message)
@@ -149,27 +147,6 @@ return function(config)
     function M.LocalMovementOverride()
         if M.IsHost or not M.Ack or M.Ack.Signature~=movement_signature(local_state())then return nil end
         return M.Ack
-    end
-    function M.BetSettings(pool)
-        P.AssertGameThread()
-        local owner=P.Read(pool,"Owner")
-        for _=1,4 do
-            if not P.Valid(owner)then break end
-            for _,ctx in ipairs(contexts())do
-                if ctx.IsAuthority and (P.Same(ctx.Controller,owner)or P.Same(ctx.Pawn,owner))then
-                    if ctx.IsLocal then return local_state()end
-                    return M.Session and M.Session:StateFor(ctx.Controller) or nil
-                end
-            end
-            owner=P.Read(owner,"Owner")
-        end
-        local count,own=0,nil
-        for _,ctx in ipairs(contexts())do
-            if P.Valid(P.Read(ctx.Pawn,"CharacterMovement"))then count=count+1;if ctx.IsLocal and ctx.IsAuthority then own=ctx end end
-        end
-        if count==1 and own then return local_state()end -- preserve confirmed standalone behavior only
-        if not M.OwnerWarning then M.OwnerWarning=true;log("gamble owner unresolved: leaving RNG unchanged")end
-        return nil
     end
     function M.Tick()
         P.AssertGameThread()

@@ -20,6 +20,10 @@ function Session:Receive(owning_controller, message)
     local second=math.floor(self.Clock())
     local count=peer and peer.Second==second and peer.Count or 0
     if count>=8 then return nil,"rate limit" end
+    -- Public hosts support movement only. Never retain legacy gameplay requests.
+    decoded.State.MaxWin=false
+    decoded.State.Rerolls=5
+    decoded.State.Hotspot=false
     self.Peers[key]={Controller=owning_controller,Sequence=decoded.Sequence,State=decoded.State,Second=second,Count=count+1}
     return decoded.State
 end
@@ -28,14 +32,6 @@ function Session:StateFor(controller)
     local key=self.KeyFor(controller)
     local peer=key and self.Peers[key]
     return peer and peer.State
-end
-
-function Session:ConsumeRerolls(controller)
-    local state=self:StateFor(controller)
-    if not state then return 5 end
-    local value=state.Rerolls
-    state.Rerolls=5
-    return value
 end
 
 function Session:Disconnect(controller)

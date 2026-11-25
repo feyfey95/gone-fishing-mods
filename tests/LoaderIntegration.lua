@@ -20,7 +20,7 @@ GonFishModAPI = {
     AddFunctionPrehook=function() return true end,
 }
 package.preload.GonFishModAPI = function() return GonFishModAPI end
-for _,name in ipairs({"PlayerMovement","CrazierGambles","MultiplayerBridge","ForceEnablePerks","FasterBeerDrinking"}) do
+for _,name in ipairs({"PlayerMovement","MultiplayerBridge","ForceEnablePerks","FasterBeerDrinking"}) do
     local module_name=name
     package.preload[module_name]=function()
         loaded[module_name]=true
@@ -34,12 +34,12 @@ end
 assert(loadfile(main_source))()
 assert(loops[1].delay==500)
 assert(loops[1].fn()==true and cancelled[1])
-assert(loaded.PlayerMovement and loaded.CrazierGambles)
-assert(loaded.LuckierFishBite and loaded.ForceEnablePerks and loaded.FasterBeerDrinking and loaded.CustomFishingCursor)
-assert(keys[Key.ONE] and keys[Key.TWO] and keys[Key.F1])
+assert(loaded.PlayerMovement and not loaded.CrazierGambles)
+assert(not loaded.LuckierFishBite and loaded.ForceEnablePerks and loaded.FasterBeerDrinking and loaded.CustomFishingCursor)
+assert(keys[Key.ONE] and keys[Key.TWO] and not keys[Key.F1])
 assert(not GonFishModAPI.ModConfig.MultiplayerDiscovery.enabled)
 assert(GonFishModAPI.ModConfig.MultiplayerBridge.enabled)
 assert(GonFishModAPI.ModConfig.PlayerMovement.JumpHeightMultiplier==1)
 assert(table.concat(GonFishModAPI.ModConfig.PlayerMovement.SpeedSteps,",")=="0,2,5,10")
 assert(loaded.MultiplayerBridge)
-host_print("actual loader + actual settings load six feature modules and bind 1/2/F1 PASS")
+host_print("public loader loads retained features, binds 1/2 and leaves F1 unbound PASS")

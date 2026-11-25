@@ -1,88 +1,11 @@
 return {
-
-    ["LuckierFishBite"] = {
-
-        ["enabled"] = true, -- true / false
-
-
-
---     CatchSpecial enables or disables a chance to catch special fish
-
---     set LuckFactor to 0 to disable luck and just have fish reporting
-
---     higer luck factor DECREASES fish variety since fish types tend to have specific weight ranges
-
-        ["LuckFactor"] = 5,
-
-        ["LuckyPullLuckMult"] = 10,
-
-        ["RarePullLuckMult"] = 100,
-
-        ["MythicPullLuckMult"] = 1000,
-
-        ["CatchSpecial"] = true,
-
-
-
-        ["MythicPullHotkey"] = "F9",
-
-        ["RarePullHotkey"] = "F8",
-
-        ["LuckyPullHotkey"] = "F7",
-
-        ["ToggleHotspotHotkey"] = "F6",
-
+    ForceEnablePerks = {enabled=true},
+    FasterBeerDrinking = {enabled=true},
+    CustomFishingCursor = {enabled=true},
+    PlayerMovement = {
+        enabled=true, SpeedSteps={0,2,5,10}, JumpHeightMultiplier=1,
+        SpeedHotkey="ONE", AirJumpHotkey="TWO", UpdateIntervalMs=100,
     },
-
-    ["ForceEnablePerks"] = {
-
-        ["enabled"] = true, -- true / false
-
-    },
-
-    ["FasterBeerDrinking"] = {
-
-        ["enabled"] = true, -- true / false
-
-    },
-
-    ["CustomFishingCursor"] = {
-
-        ["enabled"] = true, -- true / false
-
-    },
-
-    ["CrazierGambles"] = {
-
-        ["enabled"] = true, -- true / false
-
-
-
-        ["GuaranteeMaxWinHotkey"] = "F1",
-
-    },
-
-    ["PlayerMovement"] = {
-
-        ["enabled"] = true,
-
-        ["SpeedSteps"] = {0, 2, 5, 10},
-
-        ["JumpHeightMultiplier"] = 1,
-
-        ["SpeedHotkey"] = "ONE",
-
-        ["AirJumpHotkey"] = "TWO",
-
-        ["UpdateIntervalMs"] = 100,
-
-    },
-
-    ["MultiplayerDiscovery"] = {
-        ["enabled"] = false,
-    },
-    ["MultiplayerBridge"] = {
-        ["enabled"] = true,
-    },
+    MultiplayerBridge = {enabled=true},
+    MultiplayerDiscovery = {enabled=false},
 }
-

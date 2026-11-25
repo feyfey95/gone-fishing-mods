@@ -25,8 +25,7 @@ run("-e", 'assert(_VERSION == "Lua 5.4", "Lua 5.4 required")')
 for path in sorted(payload.rglob("*.lua")):
     run("-e", "assert(loadfile(arg[1])); os.exit(0)", path)
 run(root / "tests/NetworkRegression.lua", src)
-run(root / "tests/LuckierOwnershipRegression.lua", src / "LuckierFishBite.lua")
-run(root / "tests/GambleOwnerRegression.lua", src / "CrazierGambles.lua", "queued")
+run(root / "tests/PublicEditionRegression.lua", src)
 # The actual loader discovers settings.lua from the same directory as modules in this harness.
 with tempfile.TemporaryDirectory(prefix="gfm-loader-") as temp:
     import shutil

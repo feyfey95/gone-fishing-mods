@@ -103,14 +103,13 @@ clients[2].move.SpeedEnabled=false;clients[2].move.SpeedMultiplier=0;clients[2].
 assert(server.players[2].md.MaxWalkSpeed==300 and server.players[2].pd.JumpMaxCount==1 and server.players[2].md.JumpZVelocity==420)
 assert(server.players[3].md.MaxWalkSpeed==3500)
 within(server,function()
-    local pool2=obj(server,{Owner=server.players[2].controller})
-    local pool3=obj(server,{Owner=server.players[3].controller})
-    local unknown=obj(server,{})
-    assert(server.bridge.BetSettings(pool2).MaxWin)
-    assert(not server.bridge.BetSettings(pool3).MaxWin)
-    assert(server.bridge.BetSettings(unknown)==nil)
+    assert(server.bridge.BetSettings==nil)
+    local packet=assert(Codec.Encode(server.bridge.Nonce,100,{Speed=0,AirJump=false,MaxWin=true,Rerolls=5000,Hotspot=true}))
+    assert(server.bridge.ReceiveServer(server.players[2].chat,packet))
+    local state=server.bridge.Session:StateFor(server.players[2].controller)
+    assert(state.MaxWin==false and state.Rerolls==5 and state.Hotspot==false)
 end)
-host_print("OFF restores only own speed/jumps; max-win selection follows pool owner, unknown owner fails closed PASS")
+host_print("OFF restores only own movement; public host strips legacy gambling/fishing requests PASS")
 local old_server=server.players[3]
 local new_server=player(server,3,false,400);server.players[3]=new_server;server.controllers[3]=new_server.controller
 -- In-game respawn may retain the controller; reproduce that path exactly.

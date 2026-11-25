@@ -1,5 +1,5 @@
 {
-  "Version": "0.1-beta",
+  "Version": "0.2-public-beta",
   "SteamAppId": 3645890,
   "ExpectedSteamBuild": "26855621",
   "UE4SSCommit": "682a75f103a61f4a5a8d396b9c2b43c8c1958c51",
@@ -26,7 +26,7 @@
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/settings.lua",
-      "SHA256": "cd8e8e46d5628825c5aef6512999e567c1b38e7d8a0a14db4fd837b807408753"
+      "SHA256": "3a6825e279123a5ab946cf6f4a79797638b33f085e8d1c6a8683b6106ec6f4ab"
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Lib/CustomCursor.dll",
@@ -38,7 +38,7 @@
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/CrazierGambles.lua",
-      "SHA256": "7d37c3e00eb9a8388df88f7977aba60b02431fc19fcbdb8670afe36c21f9fc3b"
+      "SHA256": "1d719550b41dab99180a10732cad5117cf8426bf85ad8ec2caf79706a4be5ea4"
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/CustomFishingCursor.lua",
@@ -62,15 +62,15 @@
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/LuckierFishBite.lua",
-      "SHA256": "665796990552623734744f4d42acba8a8a63e3f4fdb8f4abad12c016395d1882"
+      "SHA256": "1d719550b41dab99180a10732cad5117cf8426bf85ad8ec2caf79706a4be5ea4"
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/main.lua",
-      "SHA256": "d1fb69ff09637dda347d989affd070c223bb3952f6c93e4511a43b07ae5ad193"
+      "SHA256": "417870a00c44f342f772b46cb56de252f77d8bcb6188d28482f6e0a0ba7444ef"
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/MultiplayerBridge.lua",
-      "SHA256": "879411cf48ce358971eb4a9678d284a0d309721845612e1aa49a1ef1b7b360b7"
+      "SHA256": "7e3362160f8fd49cb3c3b5bf24da38c62ba106dbc71b1da3d5cb59d95def8597"
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/MultiplayerDiscovery.lua",
@@ -86,7 +86,7 @@
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/MultiplayerSession.lua",
-      "SHA256": "7e0f096b0dedfda9780060d7310a514b0efe300721b3e13cd375c7eeacdb3a8f"
+      "SHA256": "316a8445330796b9db800f86947a0ca409a514e025a5a24580ab71243aae9048"
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/PlayerMovement.lua",
@@ -108,5 +108,6 @@
       "Path": "ue4ss/Mods/GonFishMods/Resources/CustomFishingCursor/cursor_orig.pdn",
       "SHA256": "449edbe156eaeb056c9755d4fdcbe80e7228cb6a753446d2bc482b7e88cd73fa"
     }
-  ]
+  ],
+  "Edition": "public-movement"
 }
