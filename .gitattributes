@@ -1,0 +1,10 @@
+* text=auto
+*.dll binary
+*.cur binary
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+# Keep payload bytes identical to manifest hashes, including GitHub ZIP downloads.
+payload/** -text
+*.pdn binary
+# Preserve upstream payload formatting without flagging its unchanged CRLF/spacing.
+payload/** whitespace=cr-at-eol,-blank-at-eol,-blank-at-eof

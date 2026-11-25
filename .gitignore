@@ -1,0 +1,15 @@
+# Personal/runtime evidence must remain local
+*.log
+*.dmp
+*.pdb
+*.sav
+*.zip
+__pycache__/
+.vs/
+SaveGames/
+Crashes/
+GFM-Coop-Backups/
+reports/
+work/
+.env
+.env.*
