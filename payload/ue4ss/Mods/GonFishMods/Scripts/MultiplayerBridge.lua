@@ -234,8 +234,7 @@ return function(config)
             return
         end
         local now=os.time()
-        if M.Ready and ((M.LastPacket and (M.Retries or 0)>=3 and now-(M.LastSent or now)>=2)
-            or (M.LastAckAt and now-M.LastAckAt>=12))then
+        if M.Ready and M.LastPacket and (M.Retries or 0)>=3 and now-(M.LastSent or now)>=2 then
             M.Ready=false;M.Ack=nil;M.Pending={};M.LastState=nil;M.LastPacket=nil;M.LastAckAt=nil;M.HadAck=false;M.Nonce=nil
             M.Attempts=0;M.LastHello=nil;generation=generation+1
             M.Challenge=hash(key..":recover:"..generation..":"..now)
@@ -249,7 +248,7 @@ return function(config)
             end
             return
         end
-        if signature~=M.LastState or (not M.LastPacket and M.LastAckAt and now-M.LastAckAt>=5)then
+        if signature~=M.LastState then
             M.Sequence=M.Sequence+1
             local packet=assert(Codec.Encode(M.Nonce,M.Sequence,state))
             M.Pending[M.Sequence]=signature
@@ -284,6 +283,7 @@ return function(config)
         pcall(RegisterHook,"/Game/MultiplayerChat/ChatWidgets/Message.Message_C:"..name,observe_message)
     end
     function M.NotifyStateChanged()
+        M.LastState=nil -- an explicit user action also requests a fresh confirmation
         local ok,err=pcall(M.Tick)
         if not ok and M.LastError~=tostring(err)then M.LastError=tostring(err);log("state change: "..M.LastError)end
     end
@@ -292,6 +292,6 @@ return function(config)
         if not ok and M.LastError~=tostring(err)then M.LastError=tostring(err);log("tick: "..M.LastError)end
         return false
     end)
-    log("beta transport loaded; owner-scoped GFM Coop control channel")
+    log("v0.6 transport loaded; event-driven state channel")
     return M
 end

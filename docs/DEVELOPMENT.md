@@ -24,8 +24,16 @@ RemoteGambling仍沒有本機熱鍵；房主明確設定允許時才接受相應
 
 ## 移動與聊天修正
 
-客戶端僅套用上次由房主ACK確認的絕對跑速與跳高，切換中不自行預測新倍率；逾時重握手並定期更新連線狀態。快取仍有效的controller，角色／world變更會重建，定時刷新避免殘留。Perks迴圈不在加速啟用期間重寫SprintSpeed；伺服器只在數值改變時寫入movement屬性。
+客戶端僅套用上次由房主ACK確認的絕對跑速與跳高，切換中不自行預測新倍率；只在等待操作確認逾時時重握手，無閒置完整狀態heartbeat。快取仍有效的controller，角色／world變更會重建，定時刷新避免殘留。Perks迴圈不在加速啟用期間重寫SprintSpeed；伺服器只在數值改變時寫入movement屬性。
 
 ChatControlFilter只識別固定GFMP協定封包，接受GFM Coop格式前綴與GetText，並對延後建立的文字作最多8次、64個widget的有限重試。不取消RPC、不移除一般聊天、不掃描全畫面。
 
 C++新增邊界測試見tests/native/ObjectScopeRegression.cpp，需與Detours相容的x64建置環境。Lua測試另涵蓋ACK等待／掉線重連、當次FishOwner優先、200個idle ticks的查找次數、延後UI與一般聊天。實際Steam連線與畫面FPS仍需人為測試；400→0的控制器掃描計數不能視為FPS數字。
+
+## 0.6：直接Blueprint與事件同步
+
+房主日誌顯示服務已註冊、持續接收5秒同步，但沒有scope內部紀錄。0.5的ProcessEvent範圍未涵蓋直接Blueprint亂數呼叫。本版在既有RandomFloat thunk處搜尋最多8層有效caller frame，從最近匹配的函式取當次Object與Locals；不依賴上一筆Owner，也不把FFrame資料偏移寫死。Node、Locals、Object、PreviousFrame四個UE4SS匯出存取器都以精確版本、RVA與entry bytes驗證。ProcessEvent路徑仍保留。
+
+移除5秒完整狀態重送與閒置ACK過期，不以另一個定時完整重送取代。維持操作變更、重試、角色／world變更與操作未確認時的重連。閒置30秒測試要求零聊天RPC；伺服器session重置後由下一次操作觸發恢復。
+
+原生測試明確取消NDEBUG，確保最佳化建置也執行assert。修正前直接Blueprint範例已實際失敗，修正後當層與祖先frame、獨立亂數、巢狀scope與例外清理皆通過。模擬仍不能代替真實遊戲frame-time量測。

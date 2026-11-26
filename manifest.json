@@ -1,5 +1,5 @@
 {
-  "Version": "0.5-sync-fixes-beta",
+  "Version": "0.6-event-sync-beta",
   "SteamAppId": 3645890,
   "ExpectedSteamBuild": "26855621",
   "UE4SSCommit": "682a75f103a61f4a5a8d396b9c2b43c8c1958c51",
@@ -30,7 +30,7 @@
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Lib/ExtendedBPHooker.dll",
-      "SHA256": "fc5e44aed90385e6646441f115c1bd092671f6d1c865fc3805fbc899e099199a"
+      "SHA256": "74519238e433296de91563e22fde1c139713b084c5239475587a695fcac95875"
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/CrazierGambles.lua",
@@ -66,7 +66,7 @@
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/MultiplayerBridge.lua",
-      "SHA256": "44f82cf7075d024aafbdb440737941e59967e3814579c5d2bfbe728b63923d87"
+      "SHA256": "d6c044b9f370fb3304aadc5b0bd394a6aead3d4ff24ecfe99ac1ea6cb3c4a708"
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/MultiplayerDiscovery.lua",
@@ -90,7 +90,7 @@
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/RemoteGambling.lua",
-      "SHA256": "f386ec2a73325e5b8f6ee885f025a63da6c32f3782ebce7630c7e9ae5b03c0b9"
+      "SHA256": "addc11660627d75069408a0980ebeacc63a36dd66753d29d984c4686ec9c3aaf"
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/ChatControlFilter.lua",
@@ -98,7 +98,7 @@
     },
     {
       "Path": "ue4ss/Mods/GonFishMods/Scripts/GambleObjectScope.lua",
-      "SHA256": "c8e7501947f5638c17110349c4f9548afae22568668b6913b6d27c8e2c4b92fc"
+      "SHA256": "6e991f6901afb39412c8c65aaa88f2142670899d31be44299de498d6ba8df22f"
     }
   ],
   "Edition": "public-client-with-remote-host-support"

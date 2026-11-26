@@ -621,6 +621,10 @@ extern "C" {
         int post_ref;
     };
     std::unordered_map<void*, object_param_scope> lua_object_param_scopes;
+#define GFM_FRAME_RNG_SCOPES 1
+    using frame_accessor_t=void** (__fastcall*)(void*);
+    frame_accessor_t r_frame_node=nullptr, r_frame_locals=nullptr, r_frame_object=nullptr, r_frame_previous=nullptr;
+
     // Uses ProcessEvent's actual parameter blob. No guessed FFrame offsets or previous-bet cache.
     void* read_object_parameter(const void* params, size_t offset) {
         if (!params || offset > 128 || offset % sizeof(void*) != 0) return nullptr;
@@ -648,6 +652,30 @@ extern "C" {
         }
     }
 
+
+    struct frame_object_scope {
+        std::optional<object_param_scope> Scope;
+        void* Object=nullptr;
+        void* Params=nullptr;
+        frame_object_scope(void* context,void* frame) {
+            if(!frame || !r_frame_node || !r_frame_locals || !r_frame_object || !r_frame_previous)return;
+            // Native Blueprint thunks can bypass ProcessEvent. Use UE4SS's verified accessors.
+            for(int depth=0;frame && depth<8;++depth) {
+                void* node=*r_frame_node(frame);
+                const auto found=lua_object_param_scopes.find(node);
+                if(found!=lua_object_param_scopes.end()) {
+                    Scope=found->second;Params=*r_frame_locals(frame);Object=*r_frame_object(frame);
+                    if(!Object)Object=context;
+                    invoke_object_scope(*Scope,true,Object,Params);
+                    return;
+                }
+                void* previous=*r_frame_previous(frame);
+                if(previous==frame)return;
+                frame=previous;
+            }
+        }
+        ~frame_object_scope(){if(Scope)invoke_object_scope(*Scope,false,Object,Params);}
+    };
 
     void __fastcall hook_ukismet_math_library_exec_random_float_in_range(void *uobject, void *fframe, double *output) {
         if (!callbacks_allowed_here()) {
@@ -717,6 +745,7 @@ extern "C" {
             return;
         }
 
+        frame_object_scope current_scope(uobject,fframe);
         for (const lua_hook &lua_posthook : lua_random_float_in_range_posthooks) {
             lua_State *L = lua_posthook.L;
             r_lua_rawgeti(L, LUA_REGISTRYINDEX, lua_posthook.luaCallbackRef);
@@ -1007,6 +1036,13 @@ extern "C" {
         r_lua_tonumberx = reinterpret_cast<lua_tonumberx_t>(reinterpret_cast<uintptr_t>(module)+0xc761d0);
         r_lua_isnumber = reinterpret_cast<lua_isnumber_t>(reinterpret_cast<uintptr_t>(module)+0xc74eb0);
         r_lua_type = reinterpret_cast<lua_type_t>(reinterpret_cast<uintptr_t>(module)+0xc76310);
+        frame_accessor_t* accessors[]={&r_frame_locals,&r_frame_node,&r_frame_object,&r_frame_previous};
+        for(size_t i=0;i<4;++i) {
+            const auto& binding=gfm_diagnostic::frame_bindings[i];
+            auto proc=GetProcAddress(module,binding.name);
+            if(!proc || reinterpret_cast<uintptr_t>(proc)-reinterpret_cast<uintptr_t>(module)!=binding.rva)return false;
+            *accessors[i]=reinterpret_cast<frame_accessor_t>(proc);
+        }
         printf("[ExtendedBPHooker-DIAG] verified UE4SS 682a75f1 GUID/age + 14 Lua entries\n");
         return true;
     }

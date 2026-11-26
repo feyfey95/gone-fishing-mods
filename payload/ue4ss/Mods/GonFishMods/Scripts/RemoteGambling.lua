@@ -13,9 +13,15 @@ return function(config)
         M.Stack[#M.Stack+1]=entry
         local bridge=GonFishMultiplayer
         if not bridge or not bridge.IsHost or not bridge.AllowRemoteMaxWin or not bridge.Ready then return end
-        local pool=type(object_name)=="string" and StaticFindObject(object_name) or nil
-        if not P.Valid(pool)then return end
-        local owner=type(fish_owner_name)=="string" and fish_owner_name~="" and StaticFindObject(fish_owner_name)or fish_owner_name
+        local scope=require("GambleObjectScope")
+        local pool=scope.Resolve(object_name)
+        local owner=scope.Resolve(fish_owner_name)
+        M.ScopesSeen=(M.ScopesSeen or 0)+1
+        if M.ScopesSeen<=3 then log("scope entered; receiver="..tostring(object_name).." FishOwner="..tostring(fish_owner_name))end
+        if not P.Valid(pool)and not P.Valid(owner)then
+            if M.ScopesSeen<=3 then log("scope object names could not be resolved; RNG unchanged")end
+            return
+        end
         local settings=bridge.BetSettings(pool,owner)
         entry.Enabled=settings~=nil and settings.MaxWin==true
         M.BetsSeen=(M.BetsSeen or 0)+1

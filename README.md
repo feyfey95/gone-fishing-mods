@@ -2,7 +2,7 @@
 
 基於 [k-Knight/gone-fishing-mods](https://github.com/k-Knight/gone-fishing-mods) 修改的非官方社群模組。
 
-**版本：0.5 Beta。多人跑速與連跳已有實測回報；本次同步修正仍需雙人驗證。**
+**版本：0.6 Beta。多人跑速與連跳已有實測回報；本次同步修正仍需雙人驗證。**
 
 ## 下載與安裝
 
@@ -22,7 +22,7 @@
 | ForceEnablePerks | 自動套用 Perks；房主預設涵蓋有效權威玩家角色 |
 | FasterBeerDrinking | 喝酒加速 |
 
-0.5 修正同步訊息顯示、逾時重連與移動切換；客戶端等待房主確認後套用跑速。請完整更新套件，勿只複製 Lua 檔。
+0.6 移除每5秒重送完整設定的工作，僅在操作變更或重連時同步；客戶端等待房主確認後套用跑速。請完整更新套件，勿只複製 Lua 檔。
 
 跑速、空中連跳每次啟動預設 OFF。0.4 版已移除自訂游標，房主與客戶端都需要更新至相同版本。設定在 `payload/ue4ss/Mods/GonFishMods/settings.lua`。
 

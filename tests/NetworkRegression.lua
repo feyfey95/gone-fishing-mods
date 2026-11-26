@@ -143,6 +143,7 @@ within(clients[3],function()assert(clients[3].bridge.LocalMovementOverride().Spe
 host_print("respawn resets peer sequence safely and records fresh per-pawn baseline PASS")
 local old_nonce=clients[3].bridge.Nonce
 server.bridge.ContextKey=nil;clock=clock+5;tick(server)
+within(clients[3],clients[3].bridge.NotifyStateChanged)
 for i=1,8 do clock=clock+2;tick(clients[3]);tick(server)end
 tick(clients[3])
 assert(clients[3].bridge.Ready and clients[3].bridge.Nonce==server.bridge.Nonce)
@@ -166,5 +167,9 @@ for i=1,100 do tick(server);tick(clients[3])end
 local after=0;for _,n in ipairs({server,clients[3]})do after=after+(n.scan_count or 0)end
 assert(after-scans<=2,"idle bridge ticks repeatedly scan the controller array")
 host_print("200 idle ticks use cached valid controllers PASS")
+local before_packets=clients[3].sent or 0
+for i=1,30 do clock=clock+1;tick(clients[3]);tick(server)end
+assert((clients[3].sent or 0)==before_packets,"idle clients emitted periodic full-state RPCs")
+host_print("30 seconds with unchanged state send no chat RPCs and retain valid synchronization PASS")
 os.time=original_time
 host_print("NOTE: simulated bus exercises real bridge/driver code, not Steam networking or game physics")

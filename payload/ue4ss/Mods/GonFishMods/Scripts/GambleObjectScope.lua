@@ -1,5 +1,17 @@
 -- Uses reflection from the loaded UFunction; never assumes a FishOwner byte offset.
 local S={}
+function S.Resolve(name)
+    if type(name)~="string"then return name end
+    if name==""then return nil end
+    local P=require("GonFishPlayers")
+    local ok,object=pcall(StaticFindObject,name)
+    if ok and P.Valid(object)then return object end
+    local path=name:match("^%S+%s+(.+)$")
+    if path then
+        ok,object=pcall(StaticFindObject,path)
+        if ok and P.Valid(object)then return object end
+    end
+end
 function S.Register(api,fn,pre,post)
     local offset
     fn:ForEachProperty(function(property)

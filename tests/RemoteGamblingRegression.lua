@@ -32,6 +32,8 @@ assert(service.RandomPost(1,6.5,2)>=6.25);service.Post();assert(service.RandomPo
 for _,name in ipairs({"remote_off","host","unknown","invalid"})do
     service.Pre(name);assert(service.RandomPost(1,6.5,2)==nil);service.Post()
 end
+service.Pre("BP_Pool_C remote_on","Player_C remote_on")
+assert(service.RandomPost(1,6.5,2)>=6.25);service.Post()
 output("only enabled remote-owner context modifies RNG; nested/OFF/local/unknown bets remain normal PASS")
 service.Pre("remote_on");GonFishMultiplayer.AllowRemoteMaxWin=false
 assert(service.RandomPost(1,6.5,2)==nil);service.Post();GonFishMultiplayer.AllowRemoteMaxWin=true
