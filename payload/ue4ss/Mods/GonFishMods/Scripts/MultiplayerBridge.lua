@@ -36,18 +36,23 @@ return function(config)
             end
         end
         if not refresh then return cached end
-        local result={}
-        for _,ctx in ipairs(P.Contexts())do
-            if type(ctx.PlayerId)=="number" and ctx.PlayerId>=0 then
-                ctx.Key=ctx.Key..":"..tostring(ctx.PlayerId);result[#result+1]=ctx
+        local result,seen={},{}
+        local function add(ctx)
+            if ctx and type(ctx.PlayerId)=="number"and ctx.PlayerId>=0 and not seen[ctx.Key]then
+                seen[ctx.Key]=true;ctx.Key=ctx.Key..":"..tostring(ctx.PlayerId);result[#result+1]=ctx
             end
+        end
+        for _,ctx in ipairs(P.Contexts())do add(ctx)end
+        if M.LocalController then add(P.FromController(M.LocalController))end
+        if M.Session then
+            for _,peer in pairs(M.Session.Peers)do add(P.FromController(peer.Controller))end
         end
         M.ContextsCache=result;M.ContextsAt=now
         return result
     end
     local function local_context()
         for _,ctx in ipairs(contexts())do
-            if ctx.IsLocal and P.Valid(P.Read(ctx.Pawn,"CharacterMovement"))then return ctx end
+            if ctx.IsLocal and P.Valid(P.Read(ctx.Pawn,"CharacterMovement"))then M.LocalController=ctx.Controller;return ctx end
         end
     end
     local function for_chat(component)
@@ -79,7 +84,7 @@ return function(config)
     end
     local function new_session(ctx,key)
         M.Driver:Reset();M.Sequence=0;M.Pending={};M.LastState=nil;M.Ack=nil;M.Attempts=0;M.Ready=false
-        M.LastHello=nil;M.LastPacket=nil;M.Replies={};M.Hellos={}
+        M.LastHello=nil;M.LastPacket=nil;M.Replies={};M.Hellos={};M.VersionMismatch=false;M.VersionWarning=false
         M.ContextKey=key;M.IsHost=ctx.IsAuthority;M.LastAckAt=nil;M.HadAck=false;generation=generation+1
         if M.IsHost then
             M.Nonce=hash(key..":"..os.time()..":"..generation)
@@ -96,7 +101,7 @@ return function(config)
         end
     end
     local function ack(ctx,sequence,targets)
-        send_client(ctx,string.format("GFMPA1|%s|%d|%.3f|%.3f",M.Nonce,sequence,targets.Speed,targets.JumpZ))
+        send_client(ctx,string.format("GFMPA2|%s|%d|%.3f|%.3f|%.3f",M.Nonce,sequence,targets.Speed,targets.JumpZ,targets.Crouch or 0))
     end
     function M.ReceiveServer(component,message)
         P.AssertGameThread()
@@ -110,7 +115,7 @@ return function(config)
             if previous and now-previous.Time<1 then return false,"hello rate"end
             if not previous or previous.Challenge~=challenge then M.Session:Disconnect(ctx.Controller);M.Replies[ctx.Key]=nil end
             M.Hellos[ctx.Key]={Challenge=challenge,Time=now}
-            send_client(ctx,"GFMPH1|"..M.Nonce.."|"..challenge);return true
+            send_client(ctx,"GFMPH2|"..M.Nonce.."|"..challenge.."|0.7");return true
         end
         local cached=M.Replies[ctx.Key]
         if cached and cached.Message==message then
@@ -136,17 +141,28 @@ return function(config)
         P.AssertGameThread()
         local ctx=for_chat(component)
         if not ctx or not ctx.IsLocal or ctx.IsAuthority or M.IsHost or type(message)~="string" or #message>160 then return false end
-        local nonce,challenge=message:match("^GFMPH1|(%x%x%x%x%x%x%x%x)|(%x%x%x%x%x%x%x%x)$")
+        local _,legacy=message:match("^GFMPH1|(%x%x%x%x%x%x%x%x)|(%x%x%x%x%x%x%x%x)$")
+        if legacy and legacy==M.Challenge then
+            M.Ready=false;M.Ack=nil;M.VersionMismatch=true;M.LastPacket=nil
+            if not M.VersionWarning then
+                M.VersionWarning=true;log("incompatible host build: both sides require 0.7")
+                if GonFishModAPI and GonFishModAPI.SendLocalChatMessage then
+                    GonFishModAPI.SendLocalChatMessage("GFM Coop","Host mod update required: install 0.7 on both sides",color)
+                end
+            end
+            return false
+        end
+        local nonce,challenge=message:match("^GFMPH2|(%x%x%x%x%x%x%x%x)|(%x%x%x%x%x%x%x%x)|0%.7$")
         if nonce and challenge==M.Challenge then
-            if not M.Ready or M.Nonce~=nonce then M.Sequence=0;M.Pending={};M.LastState=nil;M.Ack=nil;M.LastPacket=nil end
+            if not M.Ready or M.Nonce~=nonce then M.Sequence=0;M.Pending={};M.LastState=nil;M.LastPacket=nil end
             M.Nonce=nonce;M.Ready=true;log("host handshake received");return true
         end
-        local n,seq,speed,jump=message:match("^GFMPA1|(%x%x%x%x%x%x%x%x)|(%d+)|(%d+%.%d%d%d)|(%d+%.%d%d%d)$")
-        seq,speed,jump=tonumber(seq),tonumber(speed),tonumber(jump)
-        if n~=M.Nonce or not seq or not speed or not jump or speed>20000 or jump>5000 then return false end
+        local n,seq,speed,jump,crouch=message:match("^GFMPA2|(%x%x%x%x%x%x%x%x)|(%d+)|(%d+%.%d%d%d)|(%d+%.%d%d%d)|(%d+%.%d%d%d)$")
+        seq,speed,jump,crouch=tonumber(seq),tonumber(speed),tonumber(jump),tonumber(crouch)
+        if n~=M.Nonce or not seq or not speed or not jump or speed>20000 or jump>5000 or not crouch or crouch>20000 then return false end
         local pending=M.Pending[seq]
         if not pending or pending~=fingerprint(local_state())then return false end
-        M.Ack={Speed=speed,JumpZ=jump,Signature=movement_signature(local_state())}
+        M.Ack={Speed=speed,JumpZ=jump,Crouch=crouch,Signature=movement_signature(local_state())}
         M.LastAckAt=os.time()
         M.LastPacket=nil
         if not M.HadAck then
@@ -164,41 +180,35 @@ return function(config)
         -- Keep the previous confirmed mode during a transition, rather than predicting a new speed.
         return M.Ack or {Speed=0,JumpZ=0,Pending=true}
     end
-    function M.BetSettings(pool,fish_owner)
-        P.AssertGameThread()
-        if not M.IsHost or not M.Session then return nil end
-        local queue={};local seen={}
-        local first=P.Valid(fish_owner)and fish_owner or P.Read(pool,"Owner")
-        if P.Valid(first)then queue[1]=first end
-        local index=1
-        while queue[index]and index<=16 do
-            local owner=queue[index];index=index+1
-            local id=P.Id(owner)
-            if id and not seen[id]then
-                seen[id]=true
-                for _,ctx in ipairs(contexts())do
-                    if ctx.IsAuthority and (P.Same(ctx.Controller,owner)or P.Same(ctx.Pawn,owner)
-                        or P.Same(P.Read(ctx.Controller,"PlayerState"),owner))then
-                        if ctx.IsLocal then return false and local_state()or nil end
-                        if M.AllowRemoteMaxWin then return M.Session:StateFor(ctx.Controller)end
-                        return nil
-                    end
-                end
-                for _,field in ipairs({"Owner","PlayerCharacter","PlayerController","Controller"})do
-                    local next_owner=P.Read(owner,field)
-                    if P.Valid(next_owner)and #queue<16 then queue[#queue+1]=next_owner end
-                end
+    function M.RoomMaxWin()
+        if not M.IsHost or not M.Ready then return false end
+        if M.AllowRemoteMaxWin and M.Session then
+            for _,peer in pairs(M.Session.Peers)do
+                if P.Valid(peer.Controller)and peer.State.MaxWin then return true end
             end
         end
-        -- Legacy standalone calls may not supply an owner. Never use this fallback for a remote RPC.
-        if false and not P.Valid(fish_owner)then
-            local all=contexts()
-            if #all==1 and all[1].IsLocal and all[1].IsAuthority then return local_state()end
-        end
-        if not M.OwnerWarning then
-            M.OwnerWarning=true;log("bet owner unresolved from current FishOwner; RNG unchanged")
-        end
-        return nil
+        return false
+    end
+    function M.BetSettings()
+        return {MaxWin=M.RoomMaxWin()}
+    end
+    function M.BeforeMovement(pawn)
+        if not(IsInGameThread and IsInGameThread())or M.InMovementBoundary then return end
+        M.InMovementBoundary=true
+        local ok,err=pcall(function()
+            for _,ctx in ipairs(contexts())do
+                if P.Same(ctx.Pawn,pawn)and P.StillControls(ctx)then
+                    if ctx.IsLocal and PlayerMovement and PlayerMovement.Update then PlayerMovement.Update()
+                    elseif ctx.IsAuthority and M.Session then
+                        local state=M.Session:StateFor(ctx.Controller)
+                        if state then M.Driver:Apply(ctx,state)end
+                    end
+                    break
+                end
+            end
+        end)
+        M.InMovementBoundary=false
+        if not ok and M.LastMovementError~=tostring(err)then M.LastMovementError=tostring(err);log("movement boundary: "..M.LastMovementError)end
     end
     function M.Tick()
         P.AssertGameThread()
@@ -229,17 +239,18 @@ return function(config)
                 end
             end
             M.Driver:Prune(active)
-            for key,peer in pairs(M.Session.Peers)do if not active[key]then M.Session.Peers[key]=nil end end
+            for key,peer in pairs(M.Session.Peers)do if not P.Valid(peer.Controller)then M.Session.Peers[key]=nil end end
             for key in pairs(M.Replies)do if not present[key]then M.Replies[key]=nil;M.Hellos[key]=nil end end
             return
         end
         local now=os.time()
         if M.Ready and M.LastPacket and (M.Retries or 0)>=3 and now-(M.LastSent or now)>=2 then
-            M.Ready=false;M.Ack=nil;M.Pending={};M.LastState=nil;M.LastPacket=nil;M.LastAckAt=nil;M.HadAck=false;M.Nonce=nil
+            M.Ready=false;M.Pending={};M.LastState=nil;M.LastPacket=nil;M.LastAckAt=nil;M.HadAck=false;M.Nonce=nil
             M.Attempts=0;M.LastHello=nil;generation=generation+1
             M.Challenge=hash(key..":recover:"..generation..":"..now)
             log("host confirmation timed out; waiting for fresh synchronization")
         end
+        if M.VersionMismatch then return end
         if not M.Ready then
             local now=os.time()
             if M.Attempts>=10 and M.LastHello and now-M.LastHello>=10 then M.Attempts=0 end
@@ -272,6 +283,14 @@ return function(config)
             if IsInGameThread and IsInGameThread()then run()else ExecuteInGameThread(run)end
         end
     end
+    M.MovementBoundaryHooks=0
+    for _,name in ipairs({"ServerMovePacked","ServerMove","ServerMoveDual","CanJumpInternal","Jump"})do
+        local ok=pcall(RegisterHook,"/Script/Engine.Character:"..name,function(self)
+            M.BeforeMovement(value(self))
+        end)
+        if ok then M.MovementBoundaryHooks=M.MovementBoundaryHooks+1 end
+    end
+    log("native movement boundaries registered="..M.MovementBoundaryHooks)
     RegisterHook(CHAT.."SR_Send Message",hook(M.ReceiveServer))
     RegisterHook(CHAT.."MC_Enter Text",hook(M.ReceiveClient))
     local function observe_message(self)
@@ -283,6 +302,7 @@ return function(config)
         pcall(RegisterHook,"/Game/MultiplayerChat/ChatWidgets/Message.Message_C:"..name,observe_message)
     end
     function M.NotifyStateChanged()
+        M.VersionMismatch=false;M.VersionWarning=false
         M.LastState=nil -- an explicit user action also requests a fresh confirmation
         local ok,err=pcall(M.Tick)
         if not ok and M.LastError~=tostring(err)then M.LastError=tostring(err);log("state change: "..M.LastError)end
@@ -292,6 +312,6 @@ return function(config)
         if not ok and M.LastError~=tostring(err)then M.LastError=tostring(err);log("tick: "..M.LastError)end
         return false
     end)
-    log("v0.6 transport loaded; event-driven state channel")
+    log("v0.7 transport loaded; event-driven state channel")
     return M
 end

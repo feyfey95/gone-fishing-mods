@@ -614,6 +614,7 @@ extern "C" {
     std::vector<lua_hook> lua_random_float_in_range_posthooks;
     std::vector<lua_hook> lua_random_integer_in_range_posthooks;
 
+    constexpr size_t scope_without_objects = static_cast<size_t>(-1);
     struct object_param_scope {
         lua_State* L;
         size_t offset;
@@ -640,8 +641,8 @@ extern "C" {
         r_lua_rawgeti(L, LUA_REGISTRYINDEX, pre ? scope.pre_ref : scope.post_ref);
         if (r_lua_type(L, -1) != 6) { r_lua_pop(L,1); return; }
         if (pre) {
-            const std::string context_name = GetNameFromPointers(object);
-            void* owner = read_object_parameter(params, scope.offset);
+            const std::string context_name = scope.offset==scope_without_objects ? std::string{} : GetNameFromPointers(object);
+            void* owner = scope.offset==scope_without_objects ? nullptr : read_object_parameter(params, scope.offset);
             const std::string owner_name = owner ? GetNameFromPointers(owner) : std::string{};
             r_lua_pushstring(L, context_name.c_str());
             r_lua_pushstring(L, owner_name.c_str());
@@ -1191,9 +1192,9 @@ extern "C" {
         const char* address=r_luaL_checklstring(L,2,nullptr);
         const char* offset_text=r_luaL_checklstring(L,3,nullptr);
         uintptr_t fn=0;size_t offset=0;
-        try {fn=std::stoull(address,nullptr,16);offset=std::stoull(offset_text,nullptr,10);}
+        try {fn=std::stoull(address,nullptr,16);offset=std::string(offset_text)=="none" ? scope_without_objects : std::stoull(offset_text,nullptr,10);}
         catch(...) {r_lua_pushboolean(L,0);return 1;}
-        if(!fn || offset>128 || offset%sizeof(void*) || lua_object_param_scopes.count(reinterpret_cast<void*>(fn))) {
+        if(!fn || (offset!=scope_without_objects && (offset>128 || offset%sizeof(void*))) || lua_object_param_scopes.count(reinterpret_cast<void*>(fn))) {
             r_lua_pushboolean(L,0);return 1;
         }
         r_luaL_checktype(L,4,6);r_luaL_checktype(L,5,6);

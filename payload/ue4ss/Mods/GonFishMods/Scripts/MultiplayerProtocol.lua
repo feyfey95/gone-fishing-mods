@@ -1,5 +1,5 @@
 -- Pure codec. Never accepts Lua, function names, object paths, player IDs, or console commands.
-local Protocol = {Version=1, MaxLength=160}
+local Protocol = {Version=2, MaxLength=160}
 local speeds = {[0]=true,[3]=true,[5]=true}
 local fish = {[5]=true,[50]=true,[500]=true,[5000]=true}
 
@@ -10,14 +10,14 @@ function Protocol.Encode(nonce, sequence, state)
     for _, key in ipairs({"AirJump","MaxWin","Hotspot"}) do
         if type(state[key])~="boolean" then return nil,key end
     end
-    return string.format("GFMP1|%s|%d|%d|%d|%d|%d|%d", nonce:lower(),sequence,state.Speed,
+    return string.format("GFMP2|%s|%d|%d|%d|%d|%d|%d", nonce:lower(),sequence,state.Speed,
         state.AirJump and 1 or 0,state.MaxWin and 1 or 0,state.Rerolls,state.Hotspot and 1 or 0)
 end
 
 function Protocol.Decode(message)
     if type(message)~="string" or #message>Protocol.MaxLength then return nil,"length" end
     local nonce,seq,speed,air,win,rerolls,hotspot = message:match(
-        "^GFMP1|(%x%x%x%x%x%x%x%x)|(%d+)|(%d+)|([01])|([01])|(%d+)|([01])$")
+        "^GFMP2|(%x%x%x%x%x%x%x%x)|(%d+)|(%d+)|([01])|([01])|(%d+)|([01])$")
     if not nonce then return nil,"format/version" end
     local state={Speed=tonumber(speed),AirJump=air=="1",MaxWin=win=="1",Rerolls=tonumber(rerolls),Hotspot=hotspot=="1"}
     local canonical,err=Protocol.Encode(nonce,tonumber(seq),state)

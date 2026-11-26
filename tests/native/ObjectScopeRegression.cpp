@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include "../../Source/Native/ExtendedBPHooker.cpp"
 static int current_ref=0, originals=0, pre_count=0, post_count=0;
+static bool global_scope=false;static int name_reads=0;
 static bool nested=false, throw_original=false, expect_rng_scope=false, rng_result=false;
 static double rng_value=0;static int step=0;
 struct TestFrame {void* slots[20]{};};
@@ -30,12 +31,13 @@ int fake_type(lua_State*,int){return 6;}
 const char* fake_string(lua_State*,const char*value){arguments.emplace_back(value);return value;}
 int fake_pcall(lua_State*,int nargs,int,int,intptr_t,void*) {
     auto copy=arguments;arguments.clear();
-    if(current_ref==1){assert(nargs==2);assert(copy[0]=="Pool");owners.push_back(copy[1]);++pre_count;}
+    if(current_ref==1){assert(nargs==2);assert(copy[0]==(global_scope?"":"Pool"));owners.push_back(copy[1]);++pre_count;}
     else if(current_ref==2){assert(nargs==0 && !owners.empty());owners.pop_back();++post_count;}
-    else {assert(nargs==3);if(expect_rng_scope)assert(!owners.empty()&&owners.back()=="Guest1");rng_result=!owners.empty();rng_value=6.4;}
+    else {assert(nargs==3);if(expect_rng_scope)assert(!owners.empty()&&owners.back()==(global_scope?"":"Guest1"));rng_result=!owners.empty();rng_value=6.4;}
     return 0;
 }
 FakeFString* fake_name(void*object,FakeFString*out,void*,uint32_t){
+    ++name_reads;
     static wchar_t pool[]=L"Pool",guest1[]=L"Guest1",guest2[]=L"Guest2";
     out->Data=object==&owner1?guest1:object==&owner2?guest2:pool;return out;
 }
@@ -45,7 +47,7 @@ void fake_original(void*object,void*fn,void*params){
     if(fn!=function_ptr)return;
     auto*owner=params?reinterpret_cast<Params*>(params)->owner:nullptr;
     // Only valid parameter blobs are used by this fake original.
-    const auto expected=owner==&owner1?"Guest1":owner==&owner2?"Guest2":"";
+    const auto expected=global_scope?"":owner==&owner1?"Guest1":owner==&owner2?"Guest2":"";
     assert(!owners.empty() && owners.back()==expected);
     if(nested){nested=false;Params inner{nullptr,nullptr,&owner2};hook_uobject_process_event(object,fn,&inner);assert(owners.back()==expected);}
     if(throw_original)throw std::runtime_error("fake original");
@@ -82,6 +84,14 @@ int main(){
     expect_rng_scope=false;child.slots[10]=nullptr;step=0;auto before_rng=pre_count;
     hook_ukismet_math_library_exec_random_float_in_range(&context,&child,&output);assert(pre_count==before_rng&&owners.empty());
     std::cout<<"direct Blueprint RNG and ancestor frame use current FishOwner; unrelated RNG untouched PASS\n";
+    global_scope=true;expect_rng_scope=true;
+    lua_object_param_scopes[function_ptr].offset=scope_without_objects;
+    const int reads_before=name_reads;
+    hook_uobject_process_event(&context,function_ptr,nullptr);assert(owners.empty());
+    frame.slots[5]=nullptr;step=0;
+    hook_ukismet_math_library_exec_random_float_in_range(&context,&frame,&output);
+    assert(output==6.4 && owners.empty() && name_reads==reads_before);
+    std::cout<<"global function scope works without FishOwner/blob/name resolution; cleanup preserved PASS\n";
     assert(pre_count==post_count);
     std::cout<<"ProcessEvent actual parameter blob, 100 alternating owners, nested contexts, null/invalid reads, exception cleanup and off-thread passthrough PASS\n";
 }

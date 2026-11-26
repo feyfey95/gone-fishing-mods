@@ -35,7 +35,7 @@ local function deliver(node,path,component,message)
     within(node,function()node.hooks[RPC..path](parameter(component),parameter(0),parameter(FText(message)))end)
 end
 local function player(node,id,is_local,speed)
-    local movement,md=obj(node,{MaxWalkSpeed=speed or 300,JumpZVelocity=420})
+    local movement,md=obj(node,{MaxWalkSpeed=speed or 300,MaxWalkSpeedCrouched=150,JumpZVelocity=420})
     local world=node.world
     local pawn,pd=obj(node,{CharacterMovement=movement,JumpMaxCount=1},{GetWorld=function()return world end})
     local state=obj(node,{PlayerId=id})
@@ -52,7 +52,8 @@ local function player(node,id,is_local,speed)
             assert(active==server and self==chat and kind==0 and channel==0)
             local client=clients[id]
             if client then
-                if client.drop_ack and body:ToString():match("^GFMPA1")then client.drop_ack=false;return end
+                if client.drop_all then return end
+                if client.drop_ack and body:ToString():match("^GFMPA2")then client.drop_ack=false;return end
                 deliver(client,"MC_Enter Text",client.players[id].chat,body:ToString())
             end
         end,
@@ -93,11 +94,11 @@ end
 host_print("independent 5x+air / 3x player states mirror only correct server pawns PASS")
 local Codec=require("MultiplayerProtocol")
 within(server,function()
-    assert(not server.bridge.ReceiveServer(server.players[2].chat,"GFMP1|"..server.bridge.Nonce.."|2|999|1|1|5000|0"))
+    assert(not server.bridge.ReceiveServer(server.players[2].chat,"GFMP2|"..server.bridge.Nonce.."|2|999|1|1|5000|0"))
     for _,old_speed in ipairs({2,10})do
-        assert(not server.bridge.ReceiveServer(server.players[2].chat,"GFMP1|"..server.bridge.Nonce.."|2|"..old_speed.."|1|1|5000|0"))
+        assert(not server.bridge.ReceiveServer(server.players[2].chat,"GFMP2|"..server.bridge.Nonce.."|2|"..old_speed.."|1|1|5000|0"))
     end
-    assert(not server.bridge.ReceiveServer(server.players[2].chat,"GFMP1|"..server.bridge.Nonce.."|2|5|1|1|5000|0|player=3"))
+    assert(not server.bridge.ReceiveServer(server.players[2].chat,"GFMP2|"..server.bridge.Nonce.."|2|5|1|1|5000|0|player=3"))
 end)
 assert(server.players[3].md.MaxWalkSpeed==1050)
 host_print("spoofed target fields and out-of-range speed rejected PASS")
@@ -119,16 +120,13 @@ within(server,function()
     assert(server.bridge.ReceiveServer(server.players[2].chat,packet))
     local state=server.bridge.Session:StateFor(server.players[2].controller)
     assert(state.MaxWin and state.Rerolls==5 and not state.Hotspot)
-    assert(server.bridge.BetSettings(pool2).MaxWin)
-    assert(not server.bridge.BetSettings(pool2,server.players[3].pawn).MaxWin)
-    assert(server.bridge.BetSettings(pool2,unknown)==nil)
-    assert(not server.bridge.BetSettings(pool3).MaxWin)
-    assert(server.bridge.BetSettings(host_pool)==nil and server.bridge.BetSettings(unknown)==nil)
+    for _,pool in ipairs({pool2,pool3,host_pool,unknown})do assert(server.bridge.BetSettings(pool).MaxWin)end
+    assert(server.bridge.BetSettings(pool2,unknown).MaxWin)
     server.bridge.AllowRemoteMaxWin=false
-    assert(server.bridge.BetSettings(pool2)==nil)
+    assert(not server.bridge.BetSettings(pool2).MaxWin)
     server.bridge.AllowRemoteMaxWin=true
 end)
-host_print("full-client packet enables only the matching remote bet; public host/other players and unknown owners stay normal PASS")
+host_print("room max-win covers all bets only while an allowed peer toggle is ON PASS")
 local old_server=server.players[3]
 local new_server=player(server,3,false,400);server.players[3]=new_server;server.controllers[3]=new_server.controller
 -- In-game respawn may retain the controller; reproduce that path exactly.
@@ -141,6 +139,30 @@ tick(clients[3]);tick(clients[3]);tick(server)
 assert(old_server.md.MaxWalkSpeed==350 and new_server.md.MaxWalkSpeed==2000)
 within(clients[3],function()assert(clients[3].bridge.LocalMovementOverride().Speed==2000)end)
 host_print("respawn resets peer sequence safely and records fresh per-pawn baseline PASS")
+clients[3].move.AirJumpEnabled=true;tick(clients[3]);tick(server)
+within(server,function()
+    local guard=server.hooks["/Script/Engine.Character:ServerMovePacked"]
+    assert(guard,"no movement-RPC boundary guard is installed")
+    server.players[3].md.MaxWalkSpeed=100;server.players[3].md.MaxWalkSpeedCrouched=50;server.players[3].pd.JumpMaxCount=1
+    guard(parameter(server.players[3].pawn))
+    assert(server.players[3].md.MaxWalkSpeed==2000 and server.players[3].md.MaxWalkSpeedCrouched==750 and server.players[3].pd.JumpMaxCount>1000000,"game reset wins at movement boundary")
+end)
+host_print("native movement boundary re-applies walk/crouch/jump before engine validation PASS")
+local key
+for k,peer in pairs(server.bridge.Session.Peers)do if peer.Controller==server.players[3].controller then key=k end end
+assert(key)
+local saved=server.controllers;server.controllers={server.players[1].controller,server.players[2].controller};clock=clock+1;tick(server)
+assert(server.bridge.Session.Peers[key],"connected player's settings deleted on one enumeration miss")
+assert(server.players[3].pd.JumpMaxCount>1000000);server.controllers=saved
+host_print("one enumeration miss preserves a valid peer and its air jumps PASS")
+clients[3].drop_all=true
+within(clients[3],clients[3].bridge.NotifyStateChanged)
+for i=1,6 do clock=clock+2;tick(clients[3])end
+within(clients[3],function()assert(clients[3].bridge.LocalMovementOverride().JumpZ>0,"confirmed air jumps revoked by transient ACK loss")end)
+clients[3].drop_all=false
+for i=1,4 do clock=clock+2;tick(clients[3])end
+tick(clients[3]);assert(clients[3].bridge.Ready)
+host_print("ACK timeout keeps last confirmed same-pawn mode and then reconnects PASS")
 local old_nonce=clients[3].bridge.Nonce
 server.bridge.ContextKey=nil;clock=clock+5;tick(server)
 within(clients[3],clients[3].bridge.NotifyStateChanged)
@@ -171,5 +193,10 @@ local before_packets=clients[3].sent or 0
 for i=1,30 do clock=clock+1;tick(clients[3]);tick(server)end
 assert((clients[3].sent or 0)==before_packets,"idle clients emitted periodic full-state RPCs")
 host_print("30 seconds with unchanged state send no chat RPCs and retain valid synchronization PASS")
+within(clients[3],function()
+    assert(not clients[3].bridge.ReceiveClient(clients[3].players[3].chat,"GFMPH1|12345678|"..clients[3].bridge.Challenge))
+    assert(clients[3].bridge.VersionMismatch and not clients[3].bridge.Ready and not clients[3].bridge.Ack)
+end)
+host_print("legacy host handshake explicitly rejects incompatible build PASS")
 os.time=original_time
 host_print("NOTE: simulated bus exercises real bridge/driver code, not Steam networking or game physics")

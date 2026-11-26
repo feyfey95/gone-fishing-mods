@@ -14,27 +14,25 @@ RegisterHook=function(path,callback)posts[#posts+1]=callback end
 GonFishModAPI={NativeFeatureCallbacksEnabled=true,
     AddTask=function(_,callback)tasks[#tasks+1]=callback end,
     AddFunctionObjectScope=function(name,addr,offset,pre,post)
-        assert(offset=="16");prehooks[#prehooks+1]=pre;posts[#posts+1]=post;return true
+        assert(offset=="none");prehooks[#prehooks+1]=pre;posts[#posts+1]=post;return true
     end,
     AddRandomFloatInRangePosthook=function(name,callback)randoms[#randoms+1]=callback;return true end}
-GonFishMultiplayer={IsHost=true,Ready=true,AllowRemoteMaxWin=true,BetSettings=function(pool)
-    if pool==pools.remote_on then return {MaxWin=true}end
-    if pool==pools.remote_off then return {MaxWin=false}end
-end}
+local room_on=true
+GonFishMultiplayer={IsHost=true,Ready=true,AllowRemoteMaxWin=true,RoomMaxWin=function()return room_on end}
 local service=assert(loadfile(dir.."/RemoteGambling.lua"))()({})
 assert(#tasks==1 and #randoms==1);tasks[1]();assert(#prehooks==1 and #posts==1)
 service.Scan();assert(#prehooks==1 and #posts==1)
 output("native callbacks register once per function address with no local hotkeys PASS")
 assert(service.RandomPost(1,6.5,2)==nil)
 service.Pre("remote_on");local boosted=service.RandomPost(1,6.5,2);assert(boosted>=6.25 and boosted<=6.5)
-service.Pre("remote_off");assert(service.RandomPost(1,6.5,2)==nil);service.Post()
+room_on=false;service.Pre("remote_off");assert(service.RandomPost(1,6.5,2)==nil);service.Post();room_on=true
 assert(service.RandomPost(1,6.5,2)>=6.25);service.Post();assert(service.RandomPost(1,6.5,2)==nil)
 for _,name in ipairs({"remote_off","host","unknown","invalid"})do
-    service.Pre(name);assert(service.RandomPost(1,6.5,2)==nil);service.Post()
+    service.Pre(name);assert(service.RandomPost(1,6.5,2)>=6.25);service.Post()
 end
 service.Pre("BP_Pool_C remote_on","Player_C remote_on")
 assert(service.RandomPost(1,6.5,2)>=6.25);service.Post()
-output("only enabled remote-owner context modifies RNG; nested/OFF/local/unknown bets remain normal PASS")
+output("room toggle covers every known-function bet without owner lookup; nested/OFF scopes isolated PASS")
 service.Pre("remote_on");GonFishMultiplayer.AllowRemoteMaxWin=false
 assert(service.RandomPost(1,6.5,2)==nil);service.Post();GonFishMultiplayer.AllowRemoteMaxWin=true
 GonFishMultiplayer.IsHost=false;service.Pre("remote_on");assert(service.RandomPost(1,6.5,2)==nil);service.Post()

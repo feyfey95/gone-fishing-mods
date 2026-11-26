@@ -27,4 +27,9 @@ function S.Register(api,fn,pre,post)
     local ok=api.AddFunctionObjectScope("ScaleFishCompeteServer",string.format("%X",fn:GetAddress()),tostring(offset),pre,post)
     assert(ok==true,"native object-scope registration rejected")
 end
+function S.RegisterGlobal(api,fn,pre,post)
+    assert(api.AddFunctionObjectScope,"matching 0.7 native API required")
+    assert(api.AddFunctionObjectScope("ScaleFishCompeteServer",string.format("%X",fn:GetAddress()),"none",pre,post)==true,
+        "0.7 no-object scope registration rejected; update complete package")
+end
 return S

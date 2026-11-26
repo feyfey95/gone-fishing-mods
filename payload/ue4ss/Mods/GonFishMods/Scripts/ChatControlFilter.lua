@@ -6,7 +6,10 @@ function Filter:Wire(text)
     text=text:gsub("<[^>]*>","")
     text=text:match("^GFM Coop:%s*(GFMP.*)$") or text
     if #text>160 then return false end
-    return self.Codec.Decode(text)~=nil or text:match("^GFMPQ1|%x%x%x%x%x%x%x%x$")~=nil
+    return self.Codec.Decode(text)~=nil
+        or text:match("^GFMP1|%x%x%x%x%x%x%x%x|%d+|%d+|[01]|[01]|%d+|[01]$")~=nil
+        or text:match("^GFMPH2|%x%x%x%x%x%x%x%x|%x%x%x%x%x%x%x%x|0%.7$")~=nil
+        or text:match("^GFMPA2|%x%x%x%x%x%x%x%x|%d+|%d+%.%d%d%d|%d+%.%d%d%d|%d+%.%d%d%d$")~=nil or text:match("^GFMPQ1|%x%x%x%x%x%x%x%x$")~=nil
         or text:match("^GFMPH1|%x%x%x%x%x%x%x%x|%x%x%x%x%x%x%x%x$")~=nil
         or text:match("^GFMPA1|%x%x%x%x%x%x%x%x|%d+|%d+%.%d%d%d|%d+%.%d%d%d$")~=nil
 end

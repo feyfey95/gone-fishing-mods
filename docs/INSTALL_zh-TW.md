@@ -1,44 +1,34 @@
-# 公開版 0.6 安裝與測試
+# 公開版 0.7 安裝與測試
 
-## 安裝與更新
+## 完整更新
 
-1. 雙方完整關閉遊戲，下載 GitHub 目前 main 的 ZIP，完整解壓。
-2. 執行 Install.cmd，貼上自己的 GONEfishing\Binaries\Win64 完整路徑。
-3. 確認 Installed and verified，保留程式顯示的備份資料夾路徑。
-4. 正常從 Steam 啟動遊戲；不要用 Ctrl+R 熱重載。
+1. 雙方完整關閉遊戲，下載目前 main 的 ZIP，完整解壓。
+2. 執行 Install.cmd，貼上各自的 GONEfishing\Binaries\Win64 路徑。
+3. 確認 Installed and verified，保留備份路徑，再由 Steam 啟動。
+4. 不用 Ctrl+R 熱重載。0.7 包含新 ExtendedBPHooker.dll，不能只複製 Lua。
 
-更新會覆蓋原本 CrazierGambles.lua 與 LuckierFishBite.lua 為無功能佔位檔，並更新載入白名單與 settings.lua。這比只刪除新套件中的檔案更能避免升級時留下舊實作。即使舊設定手動改回 enabled=true，公開版 loader 也不會載入這兩個模組。不要把其他來源的舊 main.lua 混入新版。
+UE4SS.dll 與 dwmapi.dll 仍使用指定 commit 682a75f103a61f4a5a8d396b9c2b43c8c1958c51；指定 Steam build 26855621。不同既有 loader 會停止安裝。安裝器核對 SHA256、備份並保留其他模組，不修改 SaveGames。權限不足時可在管理員 PowerShell 執行 Install.ps1。
 
-F1、F6、F7／F8／F9 在公開版沒有對應功能；沒有幸運重抽與魚種／重量提示。已移除自訂游標；保留Perks、喝酒加速、跑速與空中連跳。
+0.7 使用新版線上協定，雙方需同版；若出現 Host mod update required，請完整更新房主與客戶端並重開。舊版不能視為相容。公開版 loader 只載入白名單；舊 CrazierGambles、LuckierFishBite、CustomFishingCursor 會覆蓋為無功能佔位檔，不能從 enabled=true 重新啟用。
 
-公開版另外保留 RemoteGambling 房主服務。完整版玩家加入後，其個人的 F1 狀態可透過原本同步協定送到房主；只有正確辨識該玩家的賭博 Owner 才修改該次 RNG。房主與其他公開版玩家仍沒有 F1 熱鍵。房主可用 `MultiplayerBridge.AllowRemoteMaxWin=false` 關閉支援；也可停用 RemoteGambling 模組。這個能力不綁特定帳號，其他自行修改客戶端的人也可能使用同樣協定。
+## 操作與房主服務
 
-指定 Steam build 26855621 與 UE4SS commit 682a75f103a61f4a5a8d396b9c2b43c8c1958c51。不同既有 loader 會停止安裝；不要手動覆蓋此版本的 DLL。找不到 Steam manifest 時無法自動確認遊戲 build。權限不足時可在管理員 PowerShell 執行 Install.ps1，請勿停用防毒。
+公開版：數字列7切換 OFF/3x/5x/OFF；數字列8切換無限空中跳，原本1倍跳高。每次啟動皆OFF。保留Perks與喝酒加速；沒有F1／F6～F9的本機操作，也不再載入自訂游標。
 
-## 雙人測試
+RemoteGambling 是房主端服務。完整版客戶端可傳送 F1 最大獎模式；0.7 按需求改成房間級開關，任一有效連線的完整版玩家開啟時，所有玩家在指定血池賭博函式中的亂數都套用近最大值。它不再辨識每筆 FishOwner，也不綁帳號。若有多個玩家開啟，需要全部關閉才停止。房主可設定 MultiplayerBridge.AllowRemoteMaxWin=false 或停用 RemoteGambling。釣魚重抽不經此房主服務代理。
 
-僅限全員同意的私人 listen-server 房間。所有人使用相容的0.1線上協定：房主使用0.6公開版；需要F1／F6～F9的玩家使用自己的完整版。一般公開版玩家仍無這些本機功能。加入後確認客戶端顯示 Multiplayer sync connected。先各自按數字列7一次測3倍跑速，再按8測空中連跳，確認另一人的開關不被影響、移動不會拉回。跳高維持1x，空白鍵需放開再按。
+僅用於全員同意的私人 listen-server 房間。這是整個房間都可能受影響的功能，請先與其他玩家確認。
 
-跑速依序 OFF/3x/5x/OFF；空中跳與跑速每次啟動 OFF。測試關閉與重新加入後的同步，最後確認正常聊天。
+## 雙人驗證
 
-測賭博時先確認客戶端已同步，再由完整版玩家開 F1、連賭兩次，房主另外賭一次作比較；關 F1 再賭一次。若日誌出現 `bet owner unresolved from current FishOwner`，表示尚未能定位下注者，不會強制最大獎。這需要兩端日誌與實際下注流程才能繼續診斷，不能只看熱鍵ON提示。完整版 F6～F9 需各自實測最終收進背包的魚，不能以本機提示當作伺服器接受證據。若出現異常，保存兩端 UE4SS.log 和對應 crash files，不要公開包含個資的原始日誌。
+先確認客戶端出現 Multiplayer sync connected，以及兩端 log 都有 v0.7 transport loaded。房主 log 應顯示 native movement boundaries registered，確認值大於0；若為0請保留日誌。
 
-多人同步尚未經真實 Steam 雙人驗證，離線測試只驗證程式邏輯。
+各自測3倍、5倍、關閉、地面直跑／轉向，以及空中連跳與關閉。記錄是否回拉或突然不能跳。角色重生、離開再加入後再測一次。同步中斷保留同角色上次確認模式；真正換角色／世界會重設。保留遊戲原有的移動校正與驗證。
+
+由完整版玩家開 F1，自己和房主各賭兩次，再關 F1 比較；測試前確定沒有其他人也開啟。房主最初三筆已辨識的 scope 會記錄 room gamble scope entered; maxwin=true/false。出現熱鍵ON不代表下注結果已成功；保留兩端日誌與實際結果。
+
+測普通聊天並確認固定協定字串不再顯示。模組可能造成帳號封鎖、崩潰與存檔損毀；未繞過反作弊。離線回歸不代替 Steam 多人、真實 FPS 或實際下注結果驗證。
 
 ## 還原
 
-關閉遊戲後執行 Restore.ps1，輸入安裝時顯示的 Win64\GFM-Coop-Backups\<UTC時間> 備份資料夾。還原前核對目前檔案雜湊，若安裝後又改過會停止。此操作會還原安裝前版本，可能包含當時已存在的舊功能。安裝與還原不會修改 SaveGames。
-
-公開版更新不撤銷已下載的舊版、其他人自行修改的程式或 Git 歷史。模組使用仍有封鎖、崩潰及存檔損毀風險，未繞過反作弊。
-
-0.4 使用數字列7與8（不是F7/F8或數字鍵盤）。房主與客戶端都需更新以支援3倍跑速。舊游標載入檔會被無功能佔位檔覆蓋，設定與載入白名單也會移除游標功能；舊DLL即使留在安裝目錄，也不再由本模組載入。
-
-## 0.5 更新注意
-
-房主與客戶端都完整關閉遊戲，使用新版 Install.cmd 更新整套檔案。這次包含與原有 UE4SS 版本配對的新 ExtendedBPHooker.dll，不能只複製 Lua。UE4SS.dll／dwmapi.dll 維持原本指定版本。
-
-跑速切換會等房主確認；同步逾時會重新握手。客戶端不再每次釣魚變動都傳送同步訊息。聊天過濾支援格式化前綴、GetText及延後填入文字，保留一般聊天。請實測切換、重新加入、普通聊天與下注；不要只看按鍵ON提示。
-
-## 0.6 更新
-
-雙方完整安裝0.6，包含原生DLL。未變更設定時不再每5秒重送完整狀態；網路連線由遊戲本身維持，按鍵變更未收到確認時才重試或重新握手。賭博的當次玩家資料同時支援ProcessEvent與直接Blueprint亂數路徑，原生存取器綁定既有精確UE4SS版本。房主最初三次scope入口會記錄receiver／FishOwner與解析狀態，若仍不生效請保留房主日誌。
+關閉遊戲，執行 Restore.ps1，輸入安裝器顯示的 Win64\GFM-Coop-Backups\<UTC時間>。還原前核對目前雜湊；若檔案再被修改會停止。還原到安裝前版本，可能包含之前的舊功能。

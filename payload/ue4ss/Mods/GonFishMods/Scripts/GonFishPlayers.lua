@@ -32,25 +32,22 @@ function P.AssertGameThread()
     assert(IsInGameThread and IsInGameThread(), "GonFishPlayers requires GameThread")
 end
 
+function P.FromController(controller)
+    P.AssertGameThread()
+    local id=P.Id(controller)
+    local pawn=P.Read(controller,"Pawn")
+    if not id or not P.Valid(pawn)then return nil end
+    local state=P.Read(controller,"PlayerState")
+    local player_id=P.Read(state,"PlayerId")
+    return {Controller=controller,Pawn=pawn,Key=id,PlayerId=type(player_id)=="number"and player_id or nil,
+        IsLocal=flag(controller,"IsLocalController"),IsAuthority=flag(controller,"HasAuthority")}
+end
 function P.Contexts()
     P.AssertGameThread()
-    local result, seen = {}, {}
-    for _, controller in ipairs(FindAllOf("PlayerController") or {}) do
-        local id = P.Id(controller)
-        if id and not seen[id] then
-            seen[id] = true
-            local pawn = P.Read(controller, "Pawn")
-            if P.Valid(pawn) then
-                local state = P.Read(controller, "PlayerState")
-                local player_id = P.Read(state, "PlayerId")
-                result[#result+1] = {
-                    Controller=controller, Pawn=pawn, Key=id,
-                    PlayerId=type(player_id)=="number" and player_id or nil,
-                    IsLocal=flag(controller, "IsLocalController"),
-                    IsAuthority=flag(controller, "HasAuthority"),
-                }
-            end
-        end
+    local result,seen={},{}
+    for _,controller in ipairs(FindAllOf("PlayerController")or {})do
+        local context=P.FromController(controller)
+        if context and not seen[context.Key]then seen[context.Key]=true;result[#result+1]=context end
     end
     return result
 end

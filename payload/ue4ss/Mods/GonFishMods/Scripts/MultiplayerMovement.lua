@@ -7,6 +7,7 @@ function Driver:Restore(record)
     if not record then return end
     if P.Valid(record.Movement) then
         if record.SpeedBase then record.Movement.MaxWalkSpeed=record.SpeedBase end
+        if record.CrouchBase then record.Movement.MaxWalkSpeedCrouched=record.CrouchBase end
         if record.JumpZBase then record.Movement.JumpZVelocity=record.JumpZBase end
     end
     if P.Valid(record.Pawn) and record.JumpBase then record.Pawn.JumpMaxCount=record.JumpBase end
@@ -27,10 +28,14 @@ function Driver:Apply(context,state)
             assert(finite(baseline) and baseline<=2000,"server speed baseline out of range")
             record.SpeedBase=baseline
         end
+        local crouch=P.Read(movement,"MaxWalkSpeedCrouched")
+        if not record.CrouchBase and finite(crouch) and crouch<=2000 then record.CrouchBase=crouch end
+        if record.CrouchBase then movement.MaxWalkSpeedCrouched=record.CrouchBase*state.Speed end
         local target=record.SpeedBase*state.Speed
         if movement.MaxWalkSpeed~=target then movement.MaxWalkSpeed=target end
     elseif record.SpeedBase then
         movement.MaxWalkSpeed=record.SpeedBase;record.SpeedBase=nil
+        if record.CrouchBase then movement.MaxWalkSpeedCrouched=record.CrouchBase;record.CrouchBase=nil end
     end
     if state.AirJump then
         if not record.JumpBase then
@@ -46,7 +51,7 @@ function Driver:Apply(context,state)
         if record.JumpBase then context.Pawn.JumpMaxCount=record.JumpBase;record.JumpBase=nil end
         if record.JumpZBase then movement.JumpZVelocity=record.JumpZBase;record.JumpZBase=nil end
     end
-    return {Speed=state.Speed>0 and movement.MaxWalkSpeed or 0,JumpZ=state.AirJump and movement.JumpZVelocity or 0}
+    return {Crouch=state.Speed>0 and record.CrouchBase and movement.MaxWalkSpeedCrouched or 0,Speed=state.Speed>0 and movement.MaxWalkSpeed or 0,JumpZ=state.AirJump and movement.JumpZVelocity or 0}
 end
 function Driver:Prune(active)
     for key,record in pairs(self.Records) do

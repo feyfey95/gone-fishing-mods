@@ -166,6 +166,10 @@ return function(config)
 
         end
 
+        if record.CrouchOriginal ~= nil and valid(record.Movement) then
+            record.Movement.MaxWalkSpeedCrouched=record.CrouchOriginal;record.CrouchOriginal=nil
+        end
+
         if record.JumpOriginal ~= nil and valid(record.Pawn) then
 
             checked("restore jumps", function()
@@ -249,7 +253,7 @@ return function(config)
         local network_client=bridge and bridge.IsHost~=true
         local override=bridge and bridge.LocalMovementOverride()
         local speed_active=network_client and override and override.Speed>0 or (not network_client and M.SpeedEnabled)
-        local jump_active=network_client and override and override.JumpZ>0 or (not network_client and M.AirJumpEnabled)
+        local jump_active=network_client and M.AirJumpEnabled and override and override.JumpZ>0 or (not network_client and M.AirJumpEnabled)
 
         checked("speed", function()
 
@@ -269,6 +273,13 @@ return function(config)
 
                 end
 
+                local crouch=movement.MaxWalkSpeedCrouched
+                if record.CrouchOriginal==nil and type(crouch)=="number" and crouch>0 and crouch<math.huge then record.CrouchOriginal=crouch end
+                if record.CrouchOriginal then
+                    local target_crouch=record.CrouchOriginal*M.SpeedMultiplier
+                    if network_client and override then target_crouch=override.Crouch or record.CrouchOriginal end
+                    if target_crouch>0 then movement.MaxWalkSpeedCrouched=target_crouch end
+                end
                 local target = record.SpeedOriginal * M.SpeedMultiplier
                 if override and override.Speed>0 then target=override.Speed end
 
@@ -289,6 +300,7 @@ return function(config)
                 movement.MaxWalkSpeed = record.SpeedOriginal
 
                 record.SpeedOriginal = nil
+                if record.CrouchOriginal then movement.MaxWalkSpeedCrouched=record.CrouchOriginal;record.CrouchOriginal=nil end
 
                 record.SpeedApplied = nil
 

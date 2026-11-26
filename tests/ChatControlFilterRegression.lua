@@ -4,6 +4,7 @@ local P={Valid=function(o)return type(o)=="table" and o.valid~=false end,Read=fu
 local filter=Filter.New(P,require("MultiplayerProtocol"))
 local wire="GFMP1|25c800f0|4|5|0|1|5|1"
 assert(filter:Wire(wire) and filter:Wire("GFM Coop: "..wire) and filter:Wire("<x>GFM Coop:</> "..wire))
+for _,v in ipairs({"GFMP2|25c800f0|4|5|0|1|5|1","GFMPH2|25c800f0|12345678|0.7","GFMPA2|25c800f0|2|1500.000|420.000|750.000"})do assert(filter:Wire("GFM Coop: "..v))end
 assert(not filter:Wire("hello "..wire) and not filter:Wire("GFM Coop: ordinary chat"))
 local function widget(text,getter)
  local b={Text=text};if getter then b.Text=nil;b.GetText=function()return {ToString=function()return text end}end end

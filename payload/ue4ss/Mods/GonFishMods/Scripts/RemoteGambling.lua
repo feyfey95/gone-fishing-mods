@@ -9,23 +9,13 @@ return function(config)
     function M.Pre(object_name,fish_owner_name)
         P.AssertGameThread()
         local entry={Enabled=false}
-        -- Always push a sentinel, so unmatched owners cannot inherit the previous bet.
+        -- Always push an entry so nested calls restore the enclosing scope.
         M.Stack[#M.Stack+1]=entry
         local bridge=GonFishMultiplayer
         if not bridge or not bridge.IsHost or not bridge.AllowRemoteMaxWin or not bridge.Ready then return end
-        local scope=require("GambleObjectScope")
-        local pool=scope.Resolve(object_name)
-        local owner=scope.Resolve(fish_owner_name)
+        entry.Enabled=bridge.RoomMaxWin()==true
         M.ScopesSeen=(M.ScopesSeen or 0)+1
-        if M.ScopesSeen<=3 then log("scope entered; receiver="..tostring(object_name).." FishOwner="..tostring(fish_owner_name))end
-        if not P.Valid(pool)and not P.Valid(owner)then
-            if M.ScopesSeen<=3 then log("scope object names could not be resolved; RNG unchanged")end
-            return
-        end
-        local settings=bridge.BetSettings(pool,owner)
-        entry.Enabled=settings~=nil and settings.MaxWin==true
-        M.BetsSeen=(M.BetsSeen or 0)+1
-        if M.BetsSeen<=3 then log("current FishOwner resolved="..tostring(settings~=nil).." maxwin="..tostring(entry.Enabled))end
+        if M.ScopesSeen<=3 then log("room gamble scope entered; maxwin="..tostring(entry.Enabled))end
     end
     function M.Post()
         P.AssertGameThread()
@@ -48,7 +38,7 @@ return function(config)
             if P.Valid(fn)then
                 local address=string.format("%X",fn:GetAddress())
                 if not M.Registered[address]then
-                    require("GambleObjectScope").Register(API,fn,M.Pre,M.Post)
+                    require("GambleObjectScope").RegisterGlobal(API,fn,M.Pre,M.Post)
                     M.Registered[address]=true
                     log("host support active; local gambling controls unavailable")
                 end
